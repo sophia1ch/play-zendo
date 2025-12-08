@@ -1,0 +1,1 @@
+generate_valid_structure([and([even_number_of(block, Structure), more_than(wedge, upside_down, Structure)])], Structure)

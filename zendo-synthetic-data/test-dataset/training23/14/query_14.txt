@@ -1,0 +1,1 @@
+generate_valid_structure([or([odd_number_of(red, Structure), more_than(yellow, block, Structure)])], Structure)

@@ -1,0 +1,1 @@
+generate_valid_structure([more_than(blue, pyramid, Structure)], Structure)

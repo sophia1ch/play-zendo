@@ -1,0 +1,1 @@
+generate_valid_structure([exactly_interaction(cheesecake, pyramid, pointing, 1, Structure)], Structure)

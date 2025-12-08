@@ -1,0 +1,1 @@
+generate_valid_structure([even_number_of_interaction(yellow, pyramid, on_top_of, Structure)], Structure)

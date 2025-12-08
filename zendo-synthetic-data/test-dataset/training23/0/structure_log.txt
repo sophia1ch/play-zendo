@@ -1,0 +1,97 @@
+0_0.png - Structure contains 3 pieces:
+0: yellow, wedge, flat, pointing at 1
+1: yellow, pyramid, upright
+2: yellow, pyramid, upright
+
+0_0_n.png - Structure contains 5 pieces:
+0: yellow, pyramid, flat
+1: blue, wedge, cheesecake, pointing at 3
+2: red, wedge, upright
+3: yellow, wedge, upright, touching 4 on right
+4: red, block, upside_down, touching 3 on left
+
+0_1.png - Structure contains 1 pieces:
+0: red, block, flat
+
+0_1_n.png - Structure contains 1 pieces:
+0: yellow, block, upside_down
+
+0_2.png - Structure contains 5 pieces:
+0: yellow, pyramid, upright
+1: yellow, wedge, flat
+2: yellow, block, upside_down
+3: red, pyramid, upside_down, touching 4 on bottom
+4: red, block, upside_down, touching 3 on top
+
+0_2_n.png - Structure contains 1 pieces:
+0: yellow, wedge, upright
+
+0_3.png - Structure contains 2 pieces:
+0: yellow, pyramid, flat
+1: blue, block, upside_down
+
+0_3_n.png - Structure contains 1 pieces:
+0: blue, block, upright
+
+0_4.png - Structure contains 4 pieces:
+0: red, wedge, flat
+1: yellow, block, flat, pointing at 3
+2: red, pyramid, upright
+3: yellow, wedge, flat
+
+0_4_n.png - Structure contains 4 pieces:
+0: yellow, wedge, cheesecake, pointing at 3, touching 1 on left
+1: yellow, block, upright, touching 0 on right
+2: yellow, wedge, upright
+3: blue, wedge, flat
+
+0_5.png - Structure contains 4 pieces:
+0: red, pyramid, flat, touching 3 on bottom
+1: yellow, wedge, flat, touching 2 on left
+2: blue, wedge, cheesecake, touching 1 on right
+3: red, block, upright, touching 0 on top
+
+0_5_n.png - Structure contains 5 pieces:
+0: yellow, pyramid, upright, touching 1 on bottom
+1: red, wedge, cheesecake, touching 0 on top, 2 on bottom
+2: red, wedge, cheesecake, touching 1 on top
+3: blue, block, upside_down
+4: red, pyramid, upright
+
+0_6.png - Structure contains 6 pieces:
+0: red, block, upright
+1: yellow, pyramid, upright
+2: yellow, block, flat
+3: blue, wedge, cheesecake, touching 5 on bottom
+4: yellow, block, upside_down
+5: yellow, block, upright, touching 2 on top
+
+0_6_n.png - Structure contains 4 pieces:
+0: yellow, wedge, cheesecake, touching 1 on bottom
+1: yellow, block, upside_down, touching 2 on left, 0 on top
+2: blue, wedge, cheesecake, pointing at 3, touching 1 on right
+3: yellow, pyramid, upright
+
+0_7.png - Structure contains 1 pieces:
+0: yellow, wedge, flat
+
+0_7_n.png - Structure contains 2 pieces:
+0: blue, block, upside_down, touching 1 on left
+1: yellow, block, upside_down, touching 0 on right
+
+0_8.png - Structure contains 1 pieces:
+0: red, wedge, cheesecake
+
+0_8_n.png - Structure contains 3 pieces:
+0: red, pyramid, flat, pointing at 2
+1: yellow, block, flat, touching 2 on right
+2: red, block, upright, touching 1 on left
+
+0_9.png - Structure contains 2 pieces:
+0: red, wedge, cheesecake
+1: red, block, upright
+
+0_9_n.png - Structure contains 3 pieces:
+0: yellow, block, flat, touching 2 on bottom
+1: blue, pyramid, upright, touching 2 on left
+2: blue, wedge, cheesecake, touching 1 on right, 0 on top

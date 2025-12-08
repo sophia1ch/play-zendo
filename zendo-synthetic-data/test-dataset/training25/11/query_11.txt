@@ -1,0 +1,1 @@
+generate_valid_structure([exclusively(vertical, Structure)], Structure)

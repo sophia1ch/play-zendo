@@ -1,0 +1,1 @@
+generate_valid_structure([and([even_number_of(upright, Structure), odd_number_of(wedge, Structure)])], Structure)

@@ -1,0 +1,1 @@
+generate_invalid_structure([even_number_of(Structure)], Structure)

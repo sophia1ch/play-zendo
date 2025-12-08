@@ -1,0 +1,1 @@
+generate_valid_structure([exactly_interaction(red, upside_down, pointing, 2, Structure)], Structure)

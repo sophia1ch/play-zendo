@@ -1,0 +1,1 @@
+generate_valid_structure([and([at_least(red, 3, Structure), exactly(pyramid, 1, Structure)])], Structure)

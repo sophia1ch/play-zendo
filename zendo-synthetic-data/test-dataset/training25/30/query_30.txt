@@ -1,0 +1,1 @@
+generate_valid_structure([and([exactly(upside_down, 3, Structure), exclusively(yellow, Structure)])], Structure)

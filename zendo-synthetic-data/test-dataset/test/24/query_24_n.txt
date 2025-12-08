@@ -1,0 +1,1 @@
+generate_invalid_structure([and([exactly(block, 2, Structure), more_than(upright, upside_down, Structure)])], Structure)

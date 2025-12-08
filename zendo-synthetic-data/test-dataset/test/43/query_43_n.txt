@@ -1,0 +1,1 @@
+generate_invalid_structure([or([exactly(yellow, 2, Structure), at_least(blue, block, 1, Structure)])], Structure)

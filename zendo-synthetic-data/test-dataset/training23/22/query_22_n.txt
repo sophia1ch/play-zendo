@@ -1,0 +1,1 @@
+generate_invalid_structure([or([at_least(pyramid, 1, Structure), odd_number_of(block, Structure)])], Structure)

@@ -1,0 +1,1 @@
+generate_valid_structure([zero(pyramid, Structure)], Structure)

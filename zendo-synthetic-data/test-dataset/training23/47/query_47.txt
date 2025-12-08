@@ -1,0 +1,1 @@
+generate_valid_structure([exactly(horizontal, 3, Structure)], Structure)

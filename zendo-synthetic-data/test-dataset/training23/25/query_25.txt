@@ -1,0 +1,1 @@
+generate_valid_structure([or([odd_number_of(upright, Structure), more_than(flat, cheesecake, Structure)])], Structure)

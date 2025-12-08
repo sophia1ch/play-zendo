@@ -1,0 +1,1 @@
+generate_valid_structure([and([exactly(upright, 1, Structure), at_least(upside_down, block, 2, Structure)])], Structure)

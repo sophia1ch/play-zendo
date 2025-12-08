@@ -1,0 +1,1 @@
+generate_invalid_structure([exactly(upright, block, 2, Structure)], Structure)

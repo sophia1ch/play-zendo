@@ -1,0 +1,1 @@
+generate_invalid_structure([or([even_number_of(pyramid, Structure), at_least(horizontal, 3, Structure)])], Structure)

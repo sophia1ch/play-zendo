@@ -1,0 +1,1 @@
+generate_valid_structure([exactly_interaction(upside_down, upside_down, on_top_of, 1, Structure)], Structure)

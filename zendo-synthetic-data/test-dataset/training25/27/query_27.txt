@@ -1,0 +1,1 @@
+generate_valid_structure([exactly(flat, pyramid, 2, Structure)], Structure)

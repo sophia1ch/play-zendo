@@ -1,0 +1,1 @@
+generate_valid_structure([exactly_interaction(red, doorstop, pointing, 3, Structure)], Structure)

@@ -1,0 +1,1 @@
+generate_valid_structure([all_three_colors(Structure)], Structure)

@@ -1,0 +1,1 @@
+generate_invalid_structure([at_least(blue, 3, Structure)], Structure)

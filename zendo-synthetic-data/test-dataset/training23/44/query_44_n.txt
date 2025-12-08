@@ -1,0 +1,1 @@
+generate_invalid_structure([or([even_number_of(pyramid, Structure), more_than(wedge, yellow, Structure)])], Structure)

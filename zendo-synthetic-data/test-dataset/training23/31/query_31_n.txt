@@ -1,0 +1,1 @@
+generate_invalid_structure([and([even_number_of(flat, Structure), odd_number_of(upright, block, Structure)])], Structure)

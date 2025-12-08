@@ -1,0 +1,1 @@
+generate_valid_structure([more_than(upside_down, upright, Structure)], Structure)
