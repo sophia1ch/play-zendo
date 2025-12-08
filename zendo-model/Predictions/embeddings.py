@@ -1,0 +1,145 @@
+import logging 
+import torch
+import torch.nn as nn
+import numpy as np
+from torch.nn.utils.rnn import pack_padded_sequence
+
+"""
+IO = [[I1, ...,Ik], O]
+I1, ..., Ik, O are lists
+IOs = [IO1, IO2, ..., IOn]
+task = (IOs1, program1)
+tasks = [task1, task2, ..., taskp]
+"""
+class SimpleEmbedding(nn.Module):
+    def __init__(self,
+                 IOEncoder,
+                 output_dimension,
+                 size_hidden,
+                 ):
+        super(SimpleEmbedding, self).__init__()
+
+        self.IOEncoder = IOEncoder
+        self.lexicon_size = IOEncoder.lexicon_size
+        self.output_dimension = output_dimension
+
+        embedding = nn.Embedding(self.lexicon_size, size_hidden)
+        self.embedding = embedding
+
+        self.hidden = nn.Sequential(
+            nn.Linear(size_hidden, size_hidden),
+            nn.LeakyReLU(),
+            nn.Linear(size_hidden, output_dimension),
+            nn.LeakyReLU(),
+        )
+
+    def forward_IOs(self, IOs):
+        """
+        returns a tensor of shape 
+        (len(IOs), self.IOEncoder.output_dimension, self.output_dimension)
+        """
+        e = self.IOEncoder.encode_IOs(IOs)
+        logging.debug("encoding size: {}".format(e.size()))
+        e = self.embedding(e)
+        logging.debug("embedding size: {}".format(e.size()))
+        e = self.hidden(e)
+        e = torch.mean(e, 0)
+        assert(e.size() == (self.IOEncoder.output_dimension, self.output_dimension))
+        return torch.flatten(e)
+
+    def forward(self, batch_IOs):
+        """
+        returns a tensor of shape 
+        (len(batch_IOs), self.IOEncoder.output_dimension, self.output_dimension)
+        """
+        res = torch.stack([self.forward_IOs(IOs) for IOs in batch_IOs])
+        assert(res.size() == (len(batch_IOs), self.IOEncoder.output_dimension * self.output_dimension))
+        return res
+
+class RNNEmbedding(nn.Module):
+    def __init__(self,
+                 IOEncoder,
+                 output_dimension,
+                 size_hidden,
+                 number_layers_RNN,
+                 ):
+        super(RNNEmbedding, self).__init__()
+
+        self.IOEncoder = IOEncoder
+        self.lexicon_size = IOEncoder.lexicon_size
+        self.output_dimension = output_dimension
+        self.size_hidden = size_hidden
+
+        embedding = nn.Embedding(self.lexicon_size, size_hidden)
+        self.embedding = embedding
+
+        Hin = size_hidden * IOEncoder.output_dimension
+        Hout = IOEncoder.output_dimension * output_dimension
+        self.RNN_layer = nn.GRU(Hin, 
+            Hout,
+            number_layers_RNN, 
+            batch_first = True,
+        )
+
+    def _forward_IOs(self, IOs):
+        """
+        returns a tensor of shape 
+        (len(IOs), self.IOEncoder.output_dimension, self.output_dimension)
+        """        
+        e = self.IOEncoder.encode_IOs(IOs)
+        logging.debug("encoding size: {}".format(e.size()))
+        e = self.embedding(e)
+        logging.debug("embedding size: {}".format(e.size()))
+        assert e.size() == (len(IOs), self.IOEncoder.output_dimension, self.size_hidden),\
+         "size not equal to: {} {} {}".format(len(IOs), self.IOEncoder.output_dimension, self.size_hidden)
+        e = torch.flatten(e, start_dim = 1)
+        e = torch.unsqueeze(e, 0)
+        e,_ = self.RNN_layer(e)
+        e = torch.squeeze(torch.squeeze(e, 0)[-1,:],0)
+        assert e.size() == (self.IOEncoder.output_dimension * self.output_dimension, ),\
+         "size not equal to: {}".format(self.IOEncoder.output_dimension * self.output_dimension)
+        return e
+
+    def forward(self, batch_IOs):
+        """
+        returns a tensor of shape 
+        (len(batch_IOs), self.IOEncoder.output_dimension, self.output_dimension)
+        """
+        res = torch.stack([self._forward_IOs(IOs) for IOs in batch_IOs])
+        assert(res.size() == (len(batch_IOs), self.IOEncoder.output_dimension * self.output_dimension))
+        return res
+    
+class RNNMatrixEmbedding(nn.Module):
+    def __init__(self, IOEncoder, output_dimension, size_hidden, number_layers_RNN):
+        super(RNNMatrixEmbedding, self).__init__()
+
+        self.IOEncoder = IOEncoder
+        self.size_hidden = size_hidden
+        self.output_dimension = output_dimension
+
+        self.embedding = nn.Embedding(self.IOEncoder.lexicon_size, size_hidden)
+
+        # Adjust the input size for the RNN
+        Hin = size_hidden  # Use size_hidden for input size (after embedding)
+        Hout = self.output_dimension  # This will be the output size of the RNN layer
+        self.RNN_layer = nn.GRU(Hin, Hout, number_layers_RNN, batch_first=True)
+
+    def _forward_IOs(self, IOs):
+        # Encode IOs using your fixed size encoding
+        e = self.IOEncoder.encode_IOs(IOs)
+        
+        # Embedding
+        e = self.embedding(e)
+        
+        # Ensure the tensor shape before passing it to RNN
+        e = e.view(e.size(0), e.size(1), -1)  # Flatten the last two dimensions to get the right input shape for the RNN
+        e, _ = self.RNN_layer(e)  # Pass through RNN layer
+        
+        # Squeeze unnecessary dimensions and get the output
+        e = e[:, -1, :]  # Take the last output from the RNN
+        return e
+
+    def forward(self, batch_IOs):
+        # TODO: change this for variable length inputs
+        # return [self._forward_IOs(IOs) for IOs in batch_IOs]
+        return torch.stack([self._forward_IOs(IOs) for IOs in batch_IOs])
