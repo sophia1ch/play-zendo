@@ -1,0 +1,23 @@
+.stones .header {
+  font-weight: 700;
+  margin-bottom: 4px; /* was 8px */
+}
+.rowline {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* was 8px */
+  margin: 2px 0; /* was 6px 0 */
+}
+
+.lbl {
+  width: 60px; /* was 70px */
+  font-weight: 700;
+}
+
+.dot {
+  width: 12px; /* was 16px */
+  height: 12px; /* was 16px */
+  border-radius: 50%;
+  background: #ffd54f;
+  border: 1px solid var(--border);
+}

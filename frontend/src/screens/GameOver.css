@@ -1,0 +1,33 @@
+.gameover-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gameover-card {
+  max-width: 480px;
+  width: 100%;
+  padding: 24px 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  border: 1px solid var(--border, #ddd);
+}
+
+.gameover-title {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+
+.gameover-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #444;
+}
+
+.gameover-button {
+  margin-top: 8px;
+  width: 100%;
+}

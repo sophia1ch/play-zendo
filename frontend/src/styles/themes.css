@@ -1,0 +1,10 @@
+:root {
+  --bg: #b3b3b3; /* helles Grau wie im Miro */
+  --panel: #d0d0d0; /* Kartenfläche */
+  --border: #9a9a9a;
+  --text: #222;
+  --muted: #555;
+  --accent: #4c73ff; /* blau für Buttons */
+  --good: #4caf50;
+  --bad: #c62828;
+}

@@ -1,0 +1,14 @@
+.prev .header {
+  font-weight: 700;
+  margin-bottom: 4px; /* was 8px */
+}
+
+.empty {
+  height: 120px; /* was 160px */
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}

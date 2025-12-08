@@ -1,0 +1,23 @@
+.imagepanel .header {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.frame {
+  height: 240px;
+  border: 1px solid var(--border);
+  background: #ededed;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.frame img {
+  max-width: 90%;
+  max-height: 90%;
+}
+.ph {
+  width: 70%;
+  height: 70%;
+  background: #ddd;
+  border: 1px dashed var(--border);
+}
