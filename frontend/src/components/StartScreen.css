@@ -1,0 +1,22 @@
+.start-screen-wrapper {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center; /* center whole box horizontally */
+  align-items: center; /* center whole box vertically */
+}
+
+/* Inner container: stack items vertically and center them */
+.start-screen-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center; /* center children horizontally */
+  text-align: center; /* center text inside headings / paragraphs */
+}
+
+/* Row with the two mode buttons */
+.start-screen-mode-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center; /* center the two buttons as a group */
+}

@@ -1,10 +1,11 @@
 import "./GuessingStones.css";
 type Props = {
-  yours: number; // Anzahl Stones des Users
-  others?: Record<number, number>; // optional: Stones des Modells
+  yours: number;
+  others?: number;
 };
 
 export default function GuessingStones({ yours, others }: Props) {
+  console.log("others", others);
   return (
     <div className="stones card">
       <div className="header">Guessing Stones</div>
@@ -15,13 +16,14 @@ export default function GuessingStones({ yours, others }: Props) {
           <div key={i} className="dot" />
         ))}
       </div>
-
-      <div className="rowline">
-        <span className="lbl">Models:</span>
-        {Array.from({ length: others ? others[0] : 0 }).map((_, i) => (
-          <div key={i} className="dot" />
-        ))}
-      </div>
+      {others !== undefined && (
+        <div className="rowline">
+          <span className="lbl">Models:</span>
+          {Array.from({ length: others }).map((_, i) => (
+            <div key={i} className="dot" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

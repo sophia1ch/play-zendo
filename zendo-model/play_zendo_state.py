@@ -11,12 +11,12 @@ from model_loader import __build_generic_zendo_model
 from zendo.game import difficulty, play_game_state
 from zendo.game_master import ZendoStateGameMaster
 from zendo.player import GPTQueryZendoPlayer, HeuristicZendoPlayer, ZendoPlayer, FullGPTZendoPlayer
-from vision_model.zendo_classification.zendo_detection.model import ZendoImageToVectorModel
+from zendo_vision.zendo_classification.zendo_detection.model import ZendoImageToVectorModel
 import shutil
 import traceback, sys
 import random
 
-def setup_game(task_index: int = 0):
+def setup_game(mode: str, player_type: str, task_index: int):
     base_cfg = {
         "max_objects": 7,
         "token_dim": 384,
@@ -64,7 +64,13 @@ def setup_game(task_index: int = 0):
     program = convert_prolog_to_dsl(name, cfg)
     print(f"Selected task {task_index} with {len(examples)} examples.")
          
- 
-    player = ZendoPlayer(player_id=0, task_idx=task_index, cfg=cfg, dsl=zendo_dsl, model=model, bar=5e-9, prefer_valid=False, min_examples=4, images=True, gs_threshold=1, vision_model=visionmodel)
+    if player_type == "reductive":
+        player = ZendoPlayer(player_id=0, task_idx=task_index, cfg=cfg, dsl=zendo_dsl, model=model, bar=5e-9, prefer_valid=False, min_examples=4, images=True, gs_threshold=1, vision_model=visionmodel)
+    elif player_type == "heuristic":
+        player = HeuristicZendoPlayer(player_id=0, task_idx=task_index, cfg=cfg, dsl=zendo_dsl, model=model, images=True, vision_model=visionmodel)
+    elif player_type == "gpt":
+        player = GPTQueryZendoPlayer(player_id=0, task_idx=task_index, cfg=cfg, dsl=zendo_dsl, model=model, images=True, vision_model=visionmodel)
+    elif player_type == "":
+        player = FullGPTZendoPlayer(player_id=0, task_idx=task_index, cfg=cfg, dsl=zendo_dsl, model=model, images=True, vision_model=visionmodel)
     gm = ZendoStateGameMaster(true_program=program, task_idx=task_index, dataset=examples.copy(), paths=images.copy(), zendo_dsl=zendo_dsl, cfg=cfg, images=True, use_images=True, ask_for_counter=False)
     return gm, player, program, name, cfg

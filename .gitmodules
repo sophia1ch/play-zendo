@@ -1,3 +1,3 @@
-[submodule "zendo-model/zendo-vision"]
-	path = zendo-model/zendo-vision
+[submodule "zendo-model/zendo_vision"]
+	path = zendo-model/zendo_vision
 	url = https://github.com/sophia1ch/vision-model

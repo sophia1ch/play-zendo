@@ -242,7 +242,7 @@ class HumanPlayer(ZendoPlayerInterface):
         except Exception as e:
             print("ERROR converting Prolog to DSL:", e)
             return None
-
+        self.guessing_stones -= 1
         return {"type": "guess_rule", "rule": rule}
     
     def wrong_rule(self, rule):

@@ -141,26 +141,24 @@ def step(state: GameState, players: list[ZendoPlayerInterface], gm: ZendoStateGa
                   print("QUIZ mode: players guessing label")
                   num_players = len(players)
                   for i in range(num_players):
-                        player_index = (state.player + i) % num_players
-                        op = players[player_index]
+                        op = players[i]
                         guess = op.guess_label(state.input_scene)
                         correct = (guess == label)
                         state.player_label_guesses[op.id] = correct
                         if correct:
-                              turn_description = f"Turn {state.turn}, Player {i}: Step: {state.current_turn}: Quiz mode correct, guessed {guess}"
+                              turn_description = f"Turn {state.turn}, Player {op.id}: Step: {state.current_turn}: Quiz mode correct, guessed {guess}"
                               state.turn_descriptions.append(turn_description)
-                              print(f"Player {i} guessed correctly: {guess}")
+                              print(f"Player {op.id} guessed correctly: {guess}")
                               state.player_guess_tokens[op.id] = state.player_guess_tokens.get(op.id, 0) + 1
                               op.quiz_correct()
                         else:
                               op.quiz_incorrect()
-                              turn_description = f"Turn {state.turn}, Player {i}: Step: {state.current_turn}: Quiz mode incorrect, guessed {guess}, correct was {label}"
+                              turn_description = f"Turn {state.turn}, Player {op.id}: Step: {state.current_turn}: Quiz mode incorrect, guessed {guess}, correct was {label}"
                               state.turn_descriptions.append(turn_description)
-                              print(f"Player {i} guessed incorrectly: {guess}")
+                              print(f"Player {op.id} guessed incorrectly: {guess}")
                         op.observe(((state.input_scene[0], label), state.input_scene[1]))
                   for i in range(num_players):
-                        player_index = (state.player + i) % num_players
-                        op = players[player_index]
+                        op = players[i]
                         for other_id, stones in state.player_guess_tokens.items():
                               if other_id != op.id:
                                     print(f"Updating player {op.id} with stones from player {other_id}: {stones}")

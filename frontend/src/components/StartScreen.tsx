@@ -1,72 +1,128 @@
 import { useState } from "react";
+import "./StartScreen.css";
+
+export type Mode = "single" | "multi";
+export type MultiPlayer = "reductive" | "gpt" | "heuristic" | "";
 
 type Props = {
   loading: boolean;
-  onStart: (idx: number) => void;
+  onStart: (mode: Mode, player: MultiPlayer) => void;
 };
 
 export default function StartScreen({ loading, onStart }: Props) {
-  const [value, setValue] = useState<string>("");
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [multiPlayer, setMultiPlayer] = useState<MultiPlayer>("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleStart = () => {
-    const trimmed = value.trim();
-    if (trimmed === "") {
-      setError("Bitte eine Zahl eingeben.");
+  const handleSubmit = () => {
+    if (mode === "multi" && multiPlayer === "") {
+      setError("Bitte einen Multiplayer-Typ auswählen.");
       return;
     }
-
-    const num = Number(trimmed);
-    if (!Number.isFinite(num) || !Number.isInteger(num)) {
-      setError("Bitte eine ganze Zahl eingeben.");
+    if (!mode) {
+      setError("Bitte einen Modus auswählen.");
       return;
     }
-
     setError(null);
-    onStart(num);
+    onStart(mode, mode === "multi" ? multiPlayer : "");
   };
 
   return (
-    <div className="start-screen container col" style={{ gap: 16 }}>
-      <h1 className="text-2xl font-semibold">Zendo</h1>
-      <p>Start Game</p>
-
-      <label className="col" htmlFor="taskIndex" style={{ gap: 8 }}>
-        <span>Task index</span>
-        <input
-          id="taskIndex"
-          type="number"
-          step={1}
-          inputMode="numeric"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleStart();
-          }}
-          disabled={loading}
-          className="input"
-          aria-invalid={!!error}
-          aria-describedby={error ? "taskIndex-error" : undefined}
-        />
-      </label>
-
-      {error && (
-        <div id="taskIndex-error" className="text-red-600 text-sm">
-          {error}
+    <div className="start-screen-wrapper">
+      <div className="start-screen-inner start-screen container col">
+        <h1 className="text-2xl font-semibold">Zendo</h1>
+        <p>Start Game</p>
+        <div className="start-screen-mode-row">
+          <button
+            type="button"
+            className={`btn ${mode === "single" ? "primary" : "secondary"}`}
+            onClick={() => {
+              setMode("single");
+              setError(null);
+            }}
+            disabled={loading}
+          >
+            Single Player
+          </button>
+          <button
+            type="button"
+            className={`btn ${mode === "multi" ? "primary" : "secondary"}`}
+            onClick={() => {
+              setMode("multi");
+              setError(null);
+            }}
+            disabled={loading}
+          >
+            Multiplayer
+          </button>
         </div>
-      )}
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <button
-          className="btn primary"
-          onClick={handleStart}
-          disabled={loading}
-        >
-          {loading ? "Initializing game..." : "Start"}
-        </button>
+        {/* Multiplayer details */}
+        {mode === "multi" && (
+          <div className="col" style={{ gap: 8, marginTop: 12 }}>
+            <span>Choose player</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  className={`btn ${
+                    multiPlayer === "reductive" ? "primary" : "secondary"
+                  }`}
+                  onClick={() => setMultiPlayer("reductive")}
+                  disabled={loading}
+                >
+                  Reductive Player
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${
+                    multiPlayer === "gpt" ? "primary" : "secondary"
+                  }`}
+                  onClick={() => setMultiPlayer("gpt")}
+                  disabled={loading}
+                >
+                  GPT Player
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${
+                    multiPlayer === "heuristic" ? "primary" : "secondary"
+                  }`}
+                  onClick={() => setMultiPlayer("heuristic")}
+                  disabled={loading}
+                >
+                  Heuristic Player
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-red-600 text-sm" style={{ marginTop: 8 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <button
+            className="btn primary"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Initializing game..." : "Start"}
+          </button>
+        </div>
+
+        {loading && <div className="spinner">Loading initial examples...</div>}
       </div>
-
-      {loading && <div className="spinner">Loading initial examples...</div>}
     </div>
   );
 }

@@ -1,21 +1,17 @@
 # main.py
 from __future__ import annotations
 
-import base64
 import json
 from pathlib import Path
-import random
-from io import BytesIO
 from typing import List, Literal, Optional, Dict, Any
 import shutil
 import torch
 import threading
 import asyncio
+import re
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from PIL import Image, ImageDraw
 from play_zendo_state import setup_game
 from zendo.player import HumanPlayer
 from zendo.game import play_game_state
@@ -79,8 +75,23 @@ def wait_for_action(kind: str) -> Dict[str, Any]:
         msg = _pending_actions.pop(kind)
         return msg
 
+TASK_STATE_PATTERN = re.compile(r"task_(\d+)_state\.json$")
 
-def init_game_with_random_task(task_index: int = 0):
+def get_next_task_index(base_dir: Path) -> int:
+    """
+    Scan base_dir for files named task_n_state.json and return max(n) + 1.
+    If no such files exist, return 0.
+    """
+    indices = []
+    for path in base_dir.glob("task_*_state.json"):
+        m = TASK_STATE_PATTERN.search(path.name)
+        if m:
+            indices.append(int(m.group(1)))
+    if not indices:
+        return 0
+    return max(indices) + 1
+
+def init_game_with_random_task(mode: str, player: str) -> None:
     """
     - wählt random Task
     - initialisiert GameMaster, AI-Player, HumanPlayer
@@ -88,17 +99,24 @@ def init_game_with_random_task(task_index: int = 0):
     """
     global gm, players, program, name, humanPlayer
     print("Initializing game with random task...")
-    gm, ai_player, program, name, cfg = setup_game(task_index)
-
+    base_dir = Path(f"gamestates/gamestates_me_{player}")
+    task_index = get_next_task_index(base_dir)
+    gm, ai_player, program, name, cfg = setup_game(mode, player, task_index)
+    if mode == "multi":
+        human_player_id = 1
+    else:
+        human_player_id = 0
     humanPlayer = HumanPlayer(
-        player_id=0,
+        player_id=human_player_id,
         task_idx=task_index,
         send_event=send_event,
         wait_for_action=wait_for_action,
         cfg=cfg,
     )
-
-    players = [humanPlayer]
+    if mode == "multi" and player != "":
+        players = [ai_player, humanPlayer]
+    else:
+        players = [humanPlayer]
 
     # Alles, was das Spiel macht (inkl. play_game_state und evtl. Speichern):
     def run_game():
@@ -106,7 +124,7 @@ def init_game_with_random_task(task_index: int = 0):
         state = play_game_state(gm, players)
 
         # Optional: deine ganze Gamestate-Speicher-Logik hier rein verschieben
-        path_name = f"gamestates/gamestates_me"
+        path_name = f"gamestates/gamestates_me_{player}"
         output_dir = Path(path_name)
         output_dir.mkdir(parents=True, exist_ok=True)
         iteration_dir = output_dir
@@ -214,8 +232,10 @@ async def websocket_endpoint(websocket: WebSocket):
             # Start-Message vom Frontend
             if mtype == "start":
                 print("WS: START received")
-                task_index = msg.get("task_index")
-                init_game_with_random_task(task_index)
+                mode = msg.get("mode", "single")
+                player = msg.get("player", "random")
+                print(f"WS: mode={mode}, player={player}")
+                init_game_with_random_task(mode, player)
                 continue
 
             # Antworten für HumanPlayer.wait_for_action(...)

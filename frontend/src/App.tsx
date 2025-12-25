@@ -12,6 +12,7 @@ import GuessingStones from "./components/GuessingStones";
 import PreviousGuesses from "./components/PreviousGuesses";
 import Loading from "./components/Loading";
 import GameOver from "./screens/GameOver";
+import type { MultiPlayer, Mode } from "./components/StartScreen";
 
 export default function App() {
   // 0 = Start, 1 = Build, 2 = Review, 3 = GuessLabel, 4 = RuleBuilder, 5 = GameOver
@@ -36,9 +37,9 @@ export default function App() {
 
   // Stones
   const [yourStones, setYourStones] = useState(0);
-  const [otherPlayersStones, setOtherPlayersStones] = useState<
-    Record<number, number>
-  >({});
+  const [otherPlayersStones, setOtherPlayersStones] = useState<number | null>(
+    null
+  );
 
   // Popup
   const [popupText, setPopupText] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export default function App() {
   const [gameWinner, setGameWinner] = useState<number | null>(null);
   const [gameRule, setGameRule] = useState<string | null>(null);
   const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
+  const [playerIndex, setPlayerIndex] = useState<number>(0);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -62,6 +64,7 @@ export default function App() {
   // Message queue and processing flag
   const messageQueueRef = useRef<WSMessage[]>([]);
   const isProcessingRef = useRef(false);
+  const playerIndexRef = useRef(playerIndex);
 
   // Keep refs in sync
   useEffect(() => {
@@ -71,6 +74,10 @@ export default function App() {
   useEffect(() => {
     loadingInitialRef.current = loadingInitial;
   }, [loadingInitial]);
+
+  useEffect(() => {
+    playerIndexRef.current = playerIndex;
+  }, [playerIndex]);
 
   function showPopup(message: string | null | undefined): Promise<void> {
     const trimmed = message?.trim();
@@ -116,7 +123,7 @@ export default function App() {
         }
 
         // description about what the other player did → popup, wait 3s
-        if (msg.description) {
+        if (msg.description && playerIndexRef.current === 1) {
           await showPopup(msg.description);
         }
         return;
@@ -134,14 +141,19 @@ export default function App() {
 
       case "update_other_player_stones": {
         console.log(
-          "[WS update_other_player_stones] Player %d: %d stones",
+          "[WS update_other_player_stones] Player:",
           msg.playerId,
-          msg.stones
+          msg.stones,
+          playerIndexRef.current
         );
-        setOtherPlayersStones((prev) => ({
-          ...prev,
-          [msg.playerId]: msg.stones,
-        }));
+        console.log(
+          "Current otherPlayersStones:",
+          otherPlayersStones,
+          playerIndexRef.current
+        );
+        if (playerIndexRef.current !== msg.playerId) {
+          setOtherPlayersStones(msg.stones);
+        }
         return;
       }
 
@@ -232,7 +244,10 @@ export default function App() {
           }
           return;
         }
-        if (text.includes("Player 0 guessed an incorrect rule:")) {
+        if (
+          playerIndexRef.current == 1 &&
+          text.includes("Player 0 guessed an incorrect rule:")
+        ) {
           console.log(
             "[WS game_system_message] Detected incorrect rule message"
           );
@@ -290,18 +305,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- user → server handlers ---
-
-  function handleStartGame(idx: number) {
-    console.log("handleStartGame called with idx:", idx);
+  function handleStartGame(mode: Mode, player: MultiPlayer) {
+    console.log("handleStartGame called:", mode, player);
     if (!wsRef.current) {
       console.log("No wsRef.current yet!");
       return;
     }
     console.log("wsRef.readyState:", wsRef.current.readyState);
     setLoadingInitial(true);
-    wsRef.current.send(JSON.stringify({ type: "start", task_index: idx }));
+    wsRef.current.send(
+      JSON.stringify({ type: "start", player: player, mode: mode })
+    );
+    if (mode === "multi") {
+      setPlayerIndex(1);
+      console.log("Set player index to 1 for multiplayer");
+    } else {
+      setPlayerIndex(0);
+    }
     console.log("Start message sent");
+    setWaitingForServer(true);
   }
 
   function handleSceneSubmit(builtScene: SceneJSON) {
@@ -390,7 +412,7 @@ export default function App() {
     setNegImages([]);
     setPreviousRules([]);
     setYourStones(0);
-    setOtherPlayersStones({});
+    setOtherPlayersStones(null);
     setCurrentGuessImage(null);
     setPopupText(null);
     setLightboxImage(null);
@@ -403,7 +425,7 @@ export default function App() {
     messageQueueRef.current = [];
   }
 
-  const youWon = gameWinner === 1;
+  const youWon = gameWinner === playerIndexRef.current;
 
   // --- render ---
 
@@ -417,7 +439,10 @@ export default function App() {
             onImageClick={(url) => setLightboxImage(url)}
           />
           <div className="row">
-            <GuessingStones yours={yourStones} others={otherPlayersStones} />
+            <GuessingStones
+              yours={yourStones}
+              others={otherPlayersStones ?? undefined}
+            />
             <PreviousGuesses rules={previousRules} />
           </div>
         </>
