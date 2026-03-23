@@ -1,0 +1,1 @@
+generate_invalid_structure([and([at_least(blue, 3, Structure), same_amount(yellow, red, Structure)])], Structure)

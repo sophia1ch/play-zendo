@@ -1,1 +1,0 @@
-generate_valid_structure([at_least_interaction(upright, block, on_top_of, 2, Structure)], Structure)

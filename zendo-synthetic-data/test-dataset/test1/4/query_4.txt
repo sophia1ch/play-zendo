@@ -1,0 +1,1 @@
+generate_valid_structure([at_least(blue, upside_down, 3, Structure)], Structure)

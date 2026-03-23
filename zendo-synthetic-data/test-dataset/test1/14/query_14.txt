@@ -1,0 +1,1 @@
+generate_valid_structure([or([exactly(pyramid, 1, Structure), even_number_of(upright, block, Structure)])], Structure)

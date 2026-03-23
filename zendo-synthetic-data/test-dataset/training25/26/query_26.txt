@@ -1,1 +1,0 @@
-generate_valid_structure([at_least(block, grounded, 2, Structure)], Structure)

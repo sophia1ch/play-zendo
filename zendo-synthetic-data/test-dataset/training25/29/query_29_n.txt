@@ -1,1 +1,0 @@
-generate_invalid_structure([at_least_interaction(pyramid, wedge, pointing, 1, Structure)], Structure)

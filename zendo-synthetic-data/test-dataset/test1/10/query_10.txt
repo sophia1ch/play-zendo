@@ -1,0 +1,1 @@
+generate_valid_structure([either_or(2, 3, Structure)], Structure)

@@ -1,1 +1,0 @@
-generate_valid_structure([exactly_interaction(block, ungrounded, 3, Structure)], Structure)

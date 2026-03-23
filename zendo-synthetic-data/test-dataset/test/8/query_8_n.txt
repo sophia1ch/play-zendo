@@ -1,1 +1,0 @@
-generate_invalid_structure([exactly(red, pyramid, 1, Structure)], Structure)

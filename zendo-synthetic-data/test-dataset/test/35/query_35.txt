@@ -1,1 +1,0 @@
-generate_valid_structure([and([odd_number_of(pyramid, Structure), exactly(yellow, 2, Structure)])], Structure)

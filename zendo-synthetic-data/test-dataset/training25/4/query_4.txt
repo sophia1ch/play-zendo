@@ -1,1 +1,0 @@
-generate_valid_structure([zero(yellow, pyramid, Structure)], Structure)
