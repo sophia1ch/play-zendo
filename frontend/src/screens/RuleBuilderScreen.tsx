@@ -794,16 +794,7 @@ export default function RuleBuilderScreen({ onSubmit }: RuleBuilderProps) {
       arg2: "",
       interaction: "",
     });
-    setRight({
-      prolog: null,
-      number: "",
-      number2: "",
-      arg1: "",
-      arg2: "",
-      interaction: "",
-    });
     setOperation("");
-    onSubmit(null);
   }
 
   return (

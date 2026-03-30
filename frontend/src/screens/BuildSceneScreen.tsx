@@ -8,37 +8,20 @@ type Props = {
 };
 export default function BuildSceneScreen({ scene, setScene, onSubmit }: Props) {
   return (
-    <div
-      className="col"
-      style={{
-        gap: 12,
-        alignItems: "center", // center children horizontally
-      }}
-    >
-      <div
-        className="panel"
-        style={{
-          width: "min(960px, 100%)", // optional max width
-        }}
-      >
+    <>
+      <div className="row" style={{ gap: 12, position: "relative" }}>
         <SceneBuilder scene={scene} setScene={setScene} />
       </div>
-
-      <div
-        className="row"
-        style={{
-          gap: 12,
-          width: "min(960px, 100%)", // match builder width
-        }}
-      >
+      <div className="row" style={{ gap: 12, position: "relative", display: "flex", justifyContent: "center", marginTop: 5}}>
         <button
-          className="btn primary"
-          style={{ width: "100%" }}
-          onClick={() => onSubmit(scene)}
-        >
-          Submit
+            className="btn primary"
+            style={{ width: "25%" , alignSelf: "center" }}
+            onClick={() => onSubmit(scene)}
+            disabled={scene.pieces.length === 0}
+          >
+            Submit
         </button>
       </div>
-    </div>
+    </>
   );
 }

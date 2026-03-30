@@ -1,3 +1,4 @@
+import * as actionLog from "../actionLog";
 import "./GameOver.css";
 
 type GameOverProps = {
@@ -28,8 +29,8 @@ export default function GameOver({
 
         {!rule && message && <p className="gameover-text">{message}</p>}
 
-        <button className="btn primary gameover-button" onClick={nextGame}>
-          Next game
+        <button className="btn primary gameover-button" onClick={() => { actionLog.log("game_over_next_clicked", { youWon, rule }); nextGame(); }}>
+          Continue to next task
         </button>
       </div>
     </div>

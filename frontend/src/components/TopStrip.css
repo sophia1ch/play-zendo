@@ -8,7 +8,7 @@
 /* Each strip takes half the row, regardless of how many images it has */
 .topstrips .strip {
   flex: 1 1 0;
-  min-width: 0; /* IMPORTANT: allow interior to shrink and scroll */
+  min-width: 0;
   padding: 8px;
 }
 
@@ -31,6 +31,11 @@
 .thumbs::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
+  cursor: pointer;
+}
+.thumbs::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
 }
 
 /* Single thumbnail */

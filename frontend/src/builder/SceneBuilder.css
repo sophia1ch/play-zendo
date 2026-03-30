@@ -1,5 +1,17 @@
 .builder {
   padding: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center the whole 3-column cluster */
+}
+.builder-row {
+  display: grid;
+  grid-template-columns: 220px auto 260px;
+  gap: 12px;
+  align-items: start;
+  width: fit-content;
+  max-width: 100%;
 }
 .palette {
   width: 220px;
@@ -7,6 +19,44 @@
   flex-direction: column;
   gap: 8px;
 }
+
+.builder-row {
+  align-items: flex-start;
+}
+
+.builder-info {
+  width: 260px;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid var(--border, #ddd);
+  padding: 10px 12px;
+  color: #444;
+}
+
+.builder-info-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.builder-info ul {
+  padding-left: 18px;
+  margin: 6px 0 8px;
+}
+
+.builder-info li {
+  margin-bottom: 4px;
+}
+
+.builder-info-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #666;
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -43,13 +93,16 @@
   cursor: grab;
 }
 .scene {
-  position: relative;
+  width: 100%;
+  max-width: 100%;
+  justify-self: stretch;
   display: grid;
   gap: 0;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: #fff;
 }
+
 .cell {
   border: 1px solid #e1e1e1;
 }
@@ -57,7 +110,6 @@
   user-select: none;
 }
 
-/* Farb-Swatches */
 .swatch {
   width: 32px;
   height: 28px;
@@ -70,7 +122,6 @@
   outline: 2px solid var(--accent, #6c5ce7);
 }
 
-/* Add-Button */
 .btn.add {
   margin-top: 8px;
   width: 100%;
@@ -107,12 +158,14 @@
   font-size: 12px;
 }
 
-/* Optional: Zellen leicht sichtbar */
 .scene .cell {
   outline: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .scene.free {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   position: relative;
   background: linear-gradient(to bottom, #fafafa, #f3f3f3);
   border-radius: 10px;
@@ -131,12 +184,10 @@
     transparent 8px,
     transparent 16px
   );
-  /* leichte Schattenkante */
   box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06) inset,
     0 -4px 16px rgba(0, 0, 0, 0.06) inset;
 }
 
-/* rest von vorher */
 .swatch {
   width: 32px;
   height: 28px;
@@ -214,7 +265,7 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-/* Wrapper für ein Piece */
+
 .piece-wrap {
   position: absolute;
 }
@@ -224,6 +275,15 @@
   inset: 0;
   outline: 2px solid var(--accent, #6c5ce7);
   border-radius: 2px;
+  pointer-events: none;
+}
+
+.arrow-target-outline {
+  position: absolute;
+  inset: 0;
+  outline: 2px dashed #6c5ce7;
+  border-radius: 2px;
+  background: rgba(108, 92, 231, 0.08);
   pointer-events: none;
 }
 
@@ -262,40 +322,44 @@
 .mini-x:hover {
   background: rgba(0, 0, 0, 0.75);
 }
-.builder-row {
-  align-items: flex-start;
-}
 
-/* Right-hand info panel */
-.builder-info {
-  flex: 0 0 260px;
-  max-width: 260px;
-  font-size: 12px;
-  line-height: 1.4;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid var(--border, #ddd);
-  padding: 10px 12px;
-  color: #444;
-}
-
-.builder-info-title {
-  font-weight: 600;
-  margin-bottom: 6px;
+/* Mini-arrow button: bottom-left, visible on hover/active */
+.mini-arrow {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(108, 92, 231, 0.7);
+  color: #fff;
   font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: crosshair;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.builder-info ul {
-  padding-left: 18px;
-  margin: 6px 0 8px;
+.piece-wrap:hover .mini-arrow,
+.piece-wrap.active .mini-arrow {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.builder-info li {
-  margin-bottom: 4px;
+.mini-arrow:hover {
+  background: rgba(108, 92, 231, 0.9);
 }
 
-.builder-info-note {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #666;
+/* Always visible when a pointing target is already set */
+.mini-arrow.has-pointing {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(108, 92, 231, 0.9);
+  box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.35);
 }

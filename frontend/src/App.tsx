@@ -4,19 +4,24 @@ import TopStrip from "./components/TopStrip";
 import BuildSceneScreen from "./screens/BuildSceneScreen";
 import ReviewScreen from "./screens/ReviewScreen";
 import GuessLabelScreen from "./screens/GuessLabelScreen";
-import RuleBuilderScreen from "./screens/RuleBuilderScreen";
+import RuleInputScreen from "./screens/RuleInputScreen";
 import type { Label, SceneJSON, WSMessage } from "./types";
 import { wsConnect } from "./api";
 import StartScreen from "./components/StartScreen";
+import Instructions from "./components/Instructions";
 import GuessingStones from "./components/GuessingStones";
 import PreviousGuesses from "./components/PreviousGuesses";
 import Loading from "./components/Loading";
 import GameOver from "./screens/GameOver";
 import type { MultiPlayer, Mode } from "./components/StartScreen";
+import * as actionLog from "./actionLog";
 
 export default function App() {
-  // 0 = Start, 1 = Build, 2 = Review, 3 = GuessLabel, 4 = RuleBuilder, 5 = GameOver
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
+  const [isStudyComplete, setIsStudyComplete] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(
+    () => !localStorage.getItem("zendo_visited")
+  );
 
   const [scene, setScene] = useState<SceneJSON>({
     id: crypto.randomUUID(),
@@ -28,45 +33,35 @@ export default function App() {
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [waitingForServer, setWaitingForServer] = useState(false);
 
-  // Top strip
   const [posImages, setPosImages] = useState<string[]>([]);
   const [negImages, setNegImages] = useState<string[]>([]);
 
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [previousRules, setPreviousRules] = useState<string[]>([]);
 
-  // Stones
   const [yourStones, setYourStones] = useState(0);
-  const [otherPlayersStones, setOtherPlayersStones] = useState<number | null>(
-    null
-  );
+  const [otherPlayersStones, setOtherPlayersStones] = useState<number | null>(null);
 
-  // Popup
   const [popupText, setPopupText] = useState<string | null>(null);
+  const [currentGuessImage, setCurrentGuessImage] = useState<string | null>(null);
 
-  // GuessLabel
-  const [currentGuessImage, setCurrentGuessImage] = useState<string | null>(
-    null
-  );
-
-  // Game over
   const [gameWinner, setGameWinner] = useState<number | null>(null);
   const [gameRule, setGameRule] = useState<string | null>(null);
   const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
   const [playerIndex, setPlayerIndex] = useState<number>(0);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const backendSessionIdRef = useRef<string | null>(null);
+  const lastStartParamsRef = useRef<{ mode: Mode; player: MultiPlayer; name: string } | null>(null);
+  const pendingLabelRef = useRef<Label | null>(null);
 
-  // "Latest" values for inside queued async handlers
   const stepRef = useRef<0 | 1 | 2 | 3 | 4 | 5>(0);
   const loadingInitialRef = useRef(false);
-
-  // Message queue and processing flag
-  const messageQueueRef = useRef<WSMessage[]>([]);
-  const isProcessingRef = useRef(false);
   const playerIndexRef = useRef(playerIndex);
 
-  // Keep refs in sync
+  const messageQueueRef = useRef<WSMessage[]>([]);
+  const isProcessingRef = useRef(false);
+
   useEffect(() => {
     stepRef.current = step;
   }, [step]);
@@ -79,50 +74,77 @@ export default function App() {
     playerIndexRef.current = playerIndex;
   }, [playerIndex]);
 
+  function canSend(): boolean {
+    return !!wsRef.current && wsRef.current.readyState === WebSocket.OPEN;
+  }
+
+  function sendWS(payload: unknown): boolean {
+    if (!canSend()) {
+      console.warn("WebSocket not open, dropping message:", payload);
+      return false;
+    }
+    wsRef.current!.send(JSON.stringify(payload));
+    return true;
+  }
+
+  function resetGameUiState() {
+    setScene({ id: crypto.randomUUID(), size: 320, pieces: [] });
+    setImage("");
+    setWaitingForServer(false);
+    setPosImages([]);
+    setNegImages([]);
+    setPreviousRules([]);
+    setYourStones(0);
+    setOtherPlayersStones(null);
+    setCurrentGuessImage(null);
+    setPopupText(null);
+    setLightboxImage(null);
+    setGameWinner(null);
+    setGameRule(null);
+    setGameOverMessage(null);
+    pendingLabelRef.current = null;
+    messageQueueRef.current = [];
+  }
+
   function showPopup(message: string | null | undefined): Promise<void> {
     const trimmed = message?.trim();
-    if (!trimmed) {
-      return Promise.resolve();
-    }
+    if (!trimmed) return Promise.resolve();
 
     setPopupText(trimmed);
-
     return new Promise((resolve) => {
       setTimeout(() => {
         setPopupText(null);
         resolve();
-      }, 3000);
+      }, 5000);
     });
   }
 
-  // --- Async handler for ONE message ---
   async function handleMessage(msg: WSMessage): Promise<void> {
     console.log("[WS handleMessage]", msg);
 
     switch (msg.type) {
       case "system": {
         console.log("[WS system]", msg.text);
+        if ("sessionId" in msg && msg.sessionId) {
+          backendSessionIdRef.current = msg.sessionId;
+          console.log("[WS] backend session id:", msg.sessionId);
+        }
         return;
       }
 
       case "labeled_example": {
-        console.log("[WS labeled_example]", msg.label);
+        actionLog.log("received_labeled_example", { label: msg.label });
         const url = msg.imageDataUrl || null;
         if (url) {
-          if (msg.label === "YES") {
-            setPosImages((prev) => [...prev, url]);
-          } else {
-            setNegImages((prev) => [...prev, url]);
-          }
+          if (msg.label === "YES") setPosImages((prev) => [...prev, url]);
+          else setNegImages((prev) => [...prev, url]);
         }
 
-        // Transition out of start screen once first example arrives
         if (stepRef.current === 0 && loadingInitialRef.current) {
           setLoadingInitial(false);
           setStep(1);
         }
 
-        // description about what the other player did → popup, wait 3s
         if (msg.description && playerIndexRef.current === 1) {
           await showPopup(msg.description);
         }
@@ -130,66 +152,70 @@ export default function App() {
       }
 
       case "quiz_result": {
+        actionLog.log("quiz_result", { correct: msg.correct, stones: msg.stones });
         setYourStones(msg.stones ?? 0);
-        if (msg.correct) {
-          await showPopup("You guessed the label correctly!");
-        } else {
-          await showPopup("You guessed the label incorrectly.");
-        }
+        await showPopup(
+          msg.correct ? "You guessed the label correctly!" : "You guessed the label incorrectly."
+        );
         return;
       }
 
       case "update_other_player_stones": {
-        console.log(
-          "[WS update_other_player_stones] Player:",
-          msg.playerId,
-          msg.stones,
-          playerIndexRef.current
-        );
-        console.log(
-          "Current otherPlayersStones:",
-          otherPlayersStones,
-          playerIndexRef.current
-        );
         if (playerIndexRef.current !== msg.playerId) {
           setOtherPlayersStones(msg.stones);
         }
         return;
       }
 
-      case "model_label": {
-        console.log("[WS model_label]", msg.label, msg.hypothesis, msg.stones);
-        return;
-      }
-
+      case "model_label":
       case "guess": {
-        console.log("[WS guess]", msg.guess, msg.correct, msg.stones);
         return;
       }
 
       case "guess_rule_prompt": {
+        actionLog.log("screen_change", { to: "rule_input" });
         setWaitingForServer(false);
         setStep(4);
         return;
       }
 
       case "rule_incorrect": {
-        console.log("[WS rule_incorrect]", msg.rule);
+        actionLog.log("rule_incorrect", { rule: msg.rule });
         setPreviousRules((prev) => [...prev, msg.rule]);
         setYourStones((prev) => prev - 1);
         await showPopup(`The rule "${msg.rule}" was incorrect.`);
         return;
       }
 
+      case "player_finished": {
+        actionLog.log("study_complete");
+        setLoadingInitial(false);
+        setWaitingForServer(false);
+        setIsStudyComplete(true);
+        setStep(0);
+        return;
+      }
+
       case "human_guess_label_request": {
-        const url = msg.imageDataUrl || "";
-        setCurrentGuessImage(url);
+        const pending = pendingLabelRef.current;
+        if (pending !== null) {
+          pendingLabelRef.current = null;
+          actionLog.log("auto_guess_label", { label: pending });
+          if (sendWS({ type: "guess_label", label: pending })) {
+            setWaitingForServer(true);
+          }
+          return;
+        }
+
+        actionLog.log("screen_change", { to: "guess_label" });
+        setCurrentGuessImage(msg.imageDataUrl || "");
         setWaitingForServer(false);
         setStep(3);
         return;
       }
 
       case "human_propose_request": {
+        actionLog.log("screen_change", { to: "build_scene" });
         setScene({
           id: crypto.randomUUID(),
           size: 320,
@@ -201,8 +227,8 @@ export default function App() {
       }
 
       case "human_scene_preview": {
-        const url = msg.imageDataUrl || "";
-        setImage(url);
+        actionLog.log("screen_change", { to: "review" });
+        setImage(msg.imageDataUrl || "");
         setWaitingForServer(false);
         setStep(2);
         return;
@@ -211,25 +237,27 @@ export default function App() {
       case "game_system_message": {
         const text = msg.text ?? "";
 
-        // Detect "Player X guessed the correct rule: some_rule. Game over."
         if (text.includes("Game over.")) {
+          actionLog.log("game_over", { message: text });
           setWaitingForServer(false);
 
           let winner: number | null = null;
           let rule: string | null = null;
 
-          const match = text.match(
+          const match1 = text.match(
             /Player\s+(\d+)\s+guessed the correct rule:\s*(.*)\.\s*Game over\./
           );
 
-          if (match) {
-            winner = Number(match[1]);
-            rule = match[2] || null;
+          if (match1) {
+            winner = Number(match1[1]);
+            rule = match1[2] || null;
             setGameWinner(winner);
             setGameRule(rule);
             setGameOverMessage(text);
             setStep(5);
+            return;
           }
+
           const match2 = text.match(
             /^Player\s+(\d+)\s+guessed a rule:\s*(.*?),\s*the Gamemaster could not disprove\.\s*Game over\.\s*True Rule:\s*(.*)$/
           );
@@ -241,31 +269,22 @@ export default function App() {
             setGameRule(rule);
             setGameOverMessage(text);
             setStep(5);
+            return;
           }
-          return;
         }
+
         if (
-          playerIndexRef.current == 1 &&
+          playerIndexRef.current === 1 &&
           text.includes("Player 0 guessed an incorrect rule:")
         ) {
-          console.log(
-            "[WS game_system_message] Detected incorrect rule message"
-          );
           const match = text.match(
             /Player 0 guessed an incorrect rule:\s*(.+?)\.\s*A counter example will be provided\./
           );
-
           if (match) {
-            console.log(
-              "[WS game_system_message] Extracted incorrect rule:",
-              match[1]
-            );
-            const rule = match[1]; // the captured rule
-            setPreviousRules((prev) => [...prev, rule]);
+            setPreviousRules((prev) => [...prev, match[1]]);
           }
         }
 
-        // Always show system text as popup, even for game over
         await showPopup(text);
         return;
       }
@@ -275,7 +294,6 @@ export default function App() {
     }
   }
 
-  // --- Async queue processor ---
   async function processQueue() {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
@@ -290,7 +308,6 @@ export default function App() {
     }
   }
 
-  // WebSocket setup: queue every message, then kick the processor
   useEffect(() => {
     const ws = wsConnect((msg: WSMessage) => {
       console.log("[WS RAW]", msg);
@@ -299,135 +316,140 @@ export default function App() {
     });
 
     wsRef.current = ws;
+
+    ws.addEventListener("close", () => {
+      console.warn("WebSocket closed");
+      setWaitingForServer(false);
+    });
+
+    ws.addEventListener("error", (err) => {
+      console.error("WebSocket error", err);
+      setWaitingForServer(false);
+    });
+
     return () => {
       ws.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleStartGame(mode: Mode, player: MultiPlayer) {
-    console.log("handleStartGame called:", mode, player);
-    if (!wsRef.current) {
-      console.log("No wsRef.current yet!");
+  function handleStartGame(mode: Mode, player: MultiPlayer, name: string) {
+    if (!canSend()) {
+      console.warn("No open WebSocket when starting game");
       return;
     }
-    console.log("wsRef.readyState:", wsRef.current.readyState);
+
+    lastStartParamsRef.current = { mode, player, name };
+
+    const id = crypto.randomUUID();
+    actionLog.startTask(id);
+    actionLog.log("game_started", { mode, player, name });
+
+    resetGameUiState();
+    setIsStudyComplete(false);
     setLoadingInitial(true);
-    wsRef.current.send(
-      JSON.stringify({ type: "start", player: player, mode: mode })
-    );
-    if (mode === "multi") {
-      setPlayerIndex(1);
-      console.log("Set player index to 1 for multiplayer");
-    } else {
-      setPlayerIndex(0);
-    }
-    console.log("Start message sent");
+    setStep(0);
+    setPlayerIndex(mode === "multi" ? 1 : 0);
+
+    sendWS({
+      type: "start",
+      player,
+      mode,
+      name,
+    });
+
     setWaitingForServer(true);
   }
 
   function handleSceneSubmit(builtScene: SceneJSON) {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "scene_built",
-        scene: builtScene,
-      })
-    );
+    actionLog.log("scene_submitted", {
+      pieceCount: builtScene.pieces.length,
+      pieces: builtScene.pieces.map((p) => ({
+        shape: p.shape,
+        color: p.color,
+        orientation: p.orientation,
+      })),
+    });
+
+    if (sendWS({ type: "scene_built", scene: builtScene })) {
+      setWaitingForServer(true);
+    }
   }
 
   function handleReviewRetry() {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "scene_decision",
-        action: "retry",
-      })
-    );
+    actionLog.log("review_retry");
+    if (sendWS({ type: "scene_decision", action: "retry" })) {
+      setWaitingForServer(true);
+    }
   }
 
-  function handleReviewTell() {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "scene_decision",
-        action: "submit",
-        mode: "TELL",
-      })
-    );
+  function handleReviewFollows() {
+    actionLog.log("review_follows_rule");
+    pendingLabelRef.current = "YES";
+    if (sendWS({ type: "scene_decision", action: "submit", mode: "QUIZ" })) {
+      setWaitingForServer(true);
+    }
   }
 
-  function handleReviewQuiz() {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "scene_decision",
-        action: "submit",
-        mode: "QUIZ",
-      })
-    );
+  function handleReviewNotFollows() {
+    actionLog.log("review_not_follows_rule");
+    pendingLabelRef.current = "NO";
+    if (sendWS({ type: "scene_decision", action: "submit", mode: "QUIZ" })) {
+      setWaitingForServer(true);
+    }
   }
 
   function handleGuessLabel(label: Label) {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
-        type: "guess_label",
-        label,
-      })
-    );
+    actionLog.log("guess_label", { label });
+    if (sendWS({ type: "guess_label", label })) {
+      setWaitingForServer(true);
+    }
   }
 
   function handleRuleSubmit(rule: string | null) {
-    if (!wsRef.current) return;
-    setWaitingForServer(true);
-    wsRef.current.send(
-      JSON.stringify({
+    actionLog.log("rule_submitted", { rule, skipped: rule == null });
+    if (
+      sendWS({
         type: "guess_rule",
         wantGuess: rule != null,
         rule: rule ?? undefined,
       })
-    );
+    ) {
+      setWaitingForServer(true);
+    }
   }
 
   function handleNextGame() {
-    setStep(0);
+    actionLog.log("next_game_clicked");
+    actionLog.sendLog(wsRef.current);
+    actionLog.downloadLog();
 
-    setScene({
-      id: crypto.randomUUID(),
-      size: 320,
-      pieces: [],
-    });
+    resetGameUiState();
 
-    setImage("");
-    setLoadingInitial(false);
-    setWaitingForServer(false);
+    const params = lastStartParamsRef.current;
+    if (params && canSend()) {
+      const id = crypto.randomUUID();
+      actionLog.startTask(id);
 
-    setPosImages([]);
-    setNegImages([]);
-    setPreviousRules([]);
-    setYourStones(0);
-    setOtherPlayersStones(null);
-    setCurrentGuessImage(null);
-    setPopupText(null);
-    setLightboxImage(null);
+      setIsStudyComplete(false);
+      setLoadingInitial(true);
+      setStep(0);
 
-    setGameWinner(null);
-    setGameRule(null);
-    setGameOverMessage(null);
+      sendWS({
+        type: "start",
+        player: params.player,
+        mode: params.mode,
+        name: params.name,
+      });
 
-    // Clear any queued WS messages
-    messageQueueRef.current = [];
+      setWaitingForServer(true);
+    } else {
+      setLoadingInitial(false);
+      setStep(0);
+    }
   }
 
   const youWon = gameWinner === playerIndexRef.current;
-
-  // --- render ---
 
   return (
     <div className="container col" style={{ gap: 12 }}>
@@ -439,11 +461,15 @@ export default function App() {
             onImageClick={(url) => setLightboxImage(url)}
           />
           <div className="row">
-            <GuessingStones
-              yours={yourStones}
-              others={otherPlayersStones ?? undefined}
-            />
-            <PreviousGuesses rules={previousRules} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <GuessingStones
+                yours={yourStones}
+                others={otherPlayersStones ?? undefined}
+              />
+            </div>
+            <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+              <PreviousGuesses rules={previousRules} />
+            </div>
           </div>
         </>
       )}
@@ -455,8 +481,35 @@ export default function App() {
       )}
 
       <div className="main-content">
-        {step === 0 && (
+        {step === 0 && isStudyComplete && (
+          <div className="start-screen-wrapper">
+            <div className="start-screen-inner start-screen container col">
+              <h1 className="text-2xl font-semibold">All done!</h1>
+              <p>You have completed all tasks. Thank you for participating!</p>
+            </div>
+          </div>
+        )}
+
+        {step === 0 && !isStudyComplete && !loadingInitial && showInstructions && (
+          <Instructions
+            onContinue={() => {
+              localStorage.setItem("zendo_visited", "true");
+              setShowInstructions(false);
+            }}
+          />
+        )}
+
+        {step === 0 && !isStudyComplete && !loadingInitial && !showInstructions && (
           <StartScreen loading={loadingInitial} onStart={handleStartGame} />
+        )}
+
+        {step === 0 && !isStudyComplete && loadingInitial && (
+          <div className="start-screen-wrapper">
+            <div className="start-screen-inner start-screen container col">
+              <h1 className="text-2xl font-semibold">Preparing next task...</h1>
+              <div className="spinner">Loading initial examples...</div>
+            </div>
+          </div>
         )}
 
         {step === 1 && (
@@ -470,8 +523,8 @@ export default function App() {
         {step === 2 && (
           <ReviewScreen
             image={image}
-            onQuiz={handleReviewQuiz}
-            onTell={handleReviewTell}
+            onFollowsRule={handleReviewFollows}
+            onNotFollowsRule={handleReviewNotFollows}
             onRetry={handleReviewRetry}
           />
         )}
@@ -483,7 +536,7 @@ export default function App() {
           />
         )}
 
-        {step === 4 && <RuleBuilderScreen onSubmit={handleRuleSubmit} />}
+        {step === 4 && <RuleInputScreen onSubmit={handleRuleSubmit} />}
 
         {step === 5 && (
           <GameOver

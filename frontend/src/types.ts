@@ -37,7 +37,7 @@ export type WSInitialExample = {
 };
 
 export type WSMessage =
-  | { type: "system"; text: string; hypothesis?: string; stones?: number }
+| { type: "system"; text: string; hypothesis?: string; stones?: number; sessionId?: string }
   | {
       type: "model_label";
       label: Label;
@@ -86,4 +86,5 @@ export type WSMessage =
       playerId: number;
       stones: number;
     }
-  | { type: "game_system_message"; text: string };
+  | { type: "game_system_message"; text: string }
+  | { type: "player_finished"; text: string };

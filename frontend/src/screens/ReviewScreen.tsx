@@ -2,14 +2,14 @@ import ImagePanel from "../components/ImagePanel";
 
 type Props = {
   image?: string;
-  onQuiz: () => void;
-  onTell: () => void;
+  onFollowsRule: () => void;
+  onNotFollowsRule: () => void;
   onRetry?: () => void;
 };
 export default function ReviewScreen({
   image,
-  onQuiz,
-  onTell,
+  onFollowsRule,
+  onNotFollowsRule,
   onRetry,
 }: Props) {
   return (
@@ -22,11 +22,11 @@ export default function ReviewScreen({
           <button className="btn" onClick={onRetry} disabled={!onRetry}>
             Retry
           </button>
-          <button className="btn" onClick={onQuiz}>
-            Quiz
+          <button className="btn good" onClick={onFollowsRule}>
+            Follows the rule
           </button>
-          <button className="btn" onClick={onTell}>
-            Tell
+          <button className="btn bad" onClick={onNotFollowsRule}>
+            Does not follow the rule
           </button>
         </div>
       </div>

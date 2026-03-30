@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SceneJSON, Piece, Shape, ColorName, Orientation } from "../types";
 import { spriteFor } from "../sprites";
+import * as actionLog from "../actionLog";
 import "./SceneBuilder.css";
 
 type Props = { scene: SceneJSON; setScene: (s: SceneJSON) => void };
@@ -17,6 +18,24 @@ const CYCLE: Record<Shape, Orientation[]> = {
   block: ["upright", "flat", "upside_down"],
   pyramid: ["upright", "flat", "upside_down"],
   wedge: ["upright", "cheesecake", "upside_down", "doorstop"],
+};
+
+// Orientations that allow manual pointing via the arrow-drag UI.
+function isPointableOrientation(p: Piece): boolean {
+  return (
+    ((p.shape === "block" || p.shape === "pyramid") && p.orientation === "flat") ||
+    (p.shape === "wedge" &&
+      (p.orientation === "cheesecake" || p.orientation === "doorstop"))
+  );
+}
+
+// CSS rotation (degrees) applied to the sprite image when the piece has a
+// pointing target set. 0 = no rotation (sprite shown as-is).
+const POINTING_SPRITE_ROTATION: Record<string, number> = {
+  block_flat: 350,
+  pyramid_flat: 30,
+  wedge_cheesecake: 30,
+  wedge_doorstop: 350, 
 };
 
 export default function SceneBuilder({ scene, setScene }: Props) {
@@ -39,6 +58,15 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   const [dragId, setDragId] = useState<string | null>(null);
   const dragOffset = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const downPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Arrow-drag state: drag from the mini-arrow button to a target piece
+  const [arrowDragId, setArrowDragId] = useState<string | null>(null);
+  const [arrowDragCursor, setArrowDragCursor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  // Which piece the cursor is currently hovering over during an arrow drag
+  const [arrowDragHoverTarget, setArrowDragHoverTarget] = useState<string | null>(null);
 
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const WIDTH_FRAC: Record<Shape, Record<Orientation, number>> = {
@@ -71,7 +99,8 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   }
 
   function recomputeRelations(pieces: Piece[]): Piece[] {
-    // 1) Alles zurücksetzen
+    // Reset spatial relations but preserve manually-set pointing if the
+    // target piece still exists in this scene.
     const reset: Piece[] = pieces.map(
       (p): Piece => ({
         ...p,
@@ -79,65 +108,29 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         touchingRight: null,
         onTop: null,
         below: null,
-        pointing: null,
+        pointing: pieces.some((other) => other.id === p.pointing)
+          ? p.pointing
+          : null,
       })
     );
 
     // --- Hilfsfunktionen ---
-    const ON_FLOOR_TOL = 4; // wie nah an floorY für „auf dem Boden“
-    const Y_SIDE_TOL = 4; // für horizontale Nachbarn
-    const EDGE_TOL = 4; // Kantenabstand für „touching“
-
-    const isOnFloor = (p: Piece) => Math.abs(p.y - floorY) <= ON_FLOOR_TOL;
-
-    function findNearestInDirection(
-      me: Piece,
-      dir: "left" | "right"
-    ): Piece | undefined {
-      let best: Piece | undefined;
-      let bestDist = Infinity;
-
-      for (const other of reset) {
-        if (other.id === me.id) continue;
-
-        // optional: ungefähr gleiche Höhe
-        if (Math.abs(other.y - me.y) > Y_SIDE_TOL * 2) continue;
-
-        const dx = other.x - me.x;
-
-        if (dir === "right") {
-          if (dx <= 0) continue;
-          if (dx < bestDist) {
-            bestDist = dx;
-            best = other;
-          }
-        } else {
-          // nach links
-          if (dx >= 0) continue;
-          const dist = -dx;
-          if (dist < bestDist) {
-            bestDist = dist;
-            best = other;
-          }
-        }
-      }
-
-      return best;
-    }
+    const ON_FLOOR_TOL = 4;
+    const Y_SIDE_TOL = 4;
+    const EDGE_TOL = 4;
 
     // --- Vertikale Stacks: onTop / below ---
     const byX = new Map<number, Piece[]>();
     for (const p of reset) {
-      const key = Math.round(p.x); // gleiche Spalte
+      const key = Math.round(p.x);
       if (!byX.has(key)) byX.set(key, []);
       byX.get(key)!.push(p);
     }
 
-    const Y_STACK_TOL = 4; // Toleranz um STACK_OFFSET herum
+    const Y_STACK_TOL = 4;
 
     for (const group of byX.values()) {
-      // größere y = weiter unten
-      group.sort((a, b) => b.y - a.y); // unten -> oben
+      group.sort((a, b) => b.y - a.y);
 
       for (let i = 0; i < group.length - 1; i++) {
         const lower = group[i];
@@ -167,48 +160,19 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         const bLeft = b.x;
         const bRight = b.x + bW;
 
-        // a rechts an b
         if (Math.abs(aRight - bLeft) <= EDGE_TOL) {
           a.touchingRight = b.id;
           b.touchingLeft = a.id;
-        }
-        // b rechts an a
-        else if (Math.abs(bRight - aLeft) <= EDGE_TOL) {
+        } else if (Math.abs(bRight - aLeft) <= EDGE_TOL) {
           b.touchingRight = a.id;
           a.touchingLeft = b.id;
         }
       }
     }
 
-    // --- Pointing ---
-    for (const p of reset) {
-      if (!isOnFloor(p)) continue;
-
-      // BLOCK: flat -> rechts
-      if (p.shape === "block" && p.orientation === "flat") {
-        const target = findNearestInDirection(p, "right");
-        p.pointing = target ? target.id : null;
-        continue;
-      }
-
-      // PYRAMID: flat -> links
-      if (p.shape === "pyramid" && p.orientation === "flat") {
-        const target = findNearestInDirection(p, "left");
-        p.pointing = target ? target.id : null;
-        continue;
-      }
-
-      // WEDGE: cheesecake -> links, doorstop -> rechts
-      if (p.shape === "wedge") {
-        if (p.orientation === "cheesecake") {
-          const target = findNearestInDirection(p, "left");
-          p.pointing = target ? target.id : null;
-        } else if (p.orientation === "doorstop") {
-          const target = findNearestInDirection(p, "right");
-          p.pointing = target ? target.id : null;
-        }
-      }
-    }
+    // Pointing is now set exclusively via the arrow-drag UI and preserved
+    // above. No automatic pointing detection.
+    void ON_FLOOR_TOL; // suppress unused-var warning
 
     return reset;
   }
@@ -255,18 +219,28 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     };
     const newPieces = [...scene.pieces, piece];
     setScene({ ...scene, pieces: recomputeRelations(newPieces) });
+    actionLog.log("piece_added", { shape: selShape, color: selColor, orientation: piece.orientation });
     console.log("Scene", scene);
     setActiveId(piece.id);
   }
 
   function cycleOrientation(id: string) {
+    const target = scene.pieces.find((p) => p.id === id);
     const newPieces = scene.pieces.map((p) => {
       if (p.id !== id) return p;
       const arr = CYCLE[p.shape];
       const idx = arr.indexOf(p.orientation);
       const next = arr[(idx + 1) % arr.length];
-      return { ...p, orientation: next };
+      // Clear pointing when orientation changes since the piece type changes.
+      return { ...p, orientation: next, pointing: null };
     });
+
+    if (target) {
+      const arr = CYCLE[target.shape];
+      const idx = arr.indexOf(target.orientation);
+      const next = arr[(idx + 1) % arr.length];
+      actionLog.log("piece_orientation_cycled", { shape: target.shape, color: target.color, from: target.orientation, to: next });
+    }
 
     setScene({
       ...scene,
@@ -278,6 +252,10 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   // DELETE helpers
   function deleteActive() {
     if (!activeId) return;
+    const target = scene.pieces.find((p) => p.id === activeId);
+    if (target) {
+      actionLog.log("piece_deleted", { shape: target.shape, color: target.color, orientation: target.orientation, via: "keyboard" });
+    }
     const filtered = scene.pieces.filter((p) => p.id !== activeId);
     setScene({
       ...scene,
@@ -288,6 +266,10 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   }
 
   function deleteById(id: string) {
+    const target = scene.pieces.find((p) => p.id === id);
+    if (target) {
+      actionLog.log("piece_deleted", { shape: target.shape, color: target.color, orientation: target.orientation, via: "button" });
+    }
     const filtered = scene.pieces.filter((p) => p.id !== id);
     setScene({
       ...scene,
@@ -308,7 +290,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeId, scene]);
 
-  // Drag
+  // Piece drag
   function onPieceMouseDown(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     setActiveId(id);
@@ -322,11 +304,45 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     downPos.current = { x: e.clientX, y: e.clientY };
   }
 
+  // Arrow drag – starts from the mini-arrow button on a pointable piece
+  function onArrowMouseDown(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    e.preventDefault();
+    setArrowDragId(id);
+    const rect = sceneRef.current!.getBoundingClientRect();
+    setArrowDragCursor({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }
+
   function clamp(val: number, min: number, max: number) {
     return Math.max(min, Math.min(max, val));
   }
 
   function onSceneMouseMove(e: React.MouseEvent) {
+    if (arrowDragId) {
+      const rect = sceneRef.current!.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      setArrowDragCursor({ x: cx, y: cy });
+
+      // Find the topmost piece (highest z) whose bounding box contains the cursor
+      let hover: string | null = null;
+      let hoverZ = -Infinity;
+      for (const p of scene.pieces) {
+        if (p.id === arrowDragId) continue;
+        if (cx >= p.x && cx <= p.x + piecePx && cy >= p.y && cy <= p.y + piecePx) {
+          if (p.z > hoverZ) {
+            hoverZ = p.z;
+            hover = p.id;
+          }
+        }
+      }
+      setArrowDragHoverTarget(hover);
+      return;
+    }
+
     if (!dragId) return;
     const rect = sceneRef.current!.getBoundingClientRect();
     const nx = clamp(
@@ -348,6 +364,23 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   }
 
   function onSceneMouseUp(e: React.MouseEvent) {
+    // Arrow-drag: lock in the hover target that was tracked during mousemove
+    if (arrowDragId) {
+      const targetId = arrowDragHoverTarget;
+      const newPieces = scene.pieces.map((p) =>
+        p.id === arrowDragId ? { ...p, pointing: targetId ?? null } : p
+      );
+      if (targetId) {
+        const src = scene.pieces.find((p) => p.id === arrowDragId);
+        if (src) actionLog.log("piece_pointing_set", { from: arrowDragId, to: targetId, shape: src.shape, orientation: src.orientation });
+      }
+      setScene({ ...scene, pieces: recomputeRelations(newPieces) });
+      setArrowDragId(null);
+      setArrowDragCursor(null);
+      setArrowDragHoverTarget(null);
+      return;
+    }
+
     if (!dragId) return;
 
     const moved =
@@ -361,7 +394,6 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     if (moved) {
       const others = scene.pieces.filter((p) => p.id !== dragId);
 
-      // Kandidaten im Umkreis
       type Cand = { p: Piece; dist: number };
       const cands: Cand[] = others
         .map((p) => {
@@ -375,17 +407,13 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         .sort((a, b) => a.dist - b.dist);
 
       if (cands.length) {
-        // Snap an den nächsten Nachbarn
         const n = cands[0].p;
         const myCX = me.x + piecePx / 2;
         const nCX = n.x + piecePx / 2;
         const xOverlap = Math.abs(myCX - nCX) <= piecePx * STACK_X_TOL;
 
         if (xOverlap) {
-          // Stapeln: exakt gleiche X-Spalte, sichtbarer Offset nach oben
           targetX = n.x;
-          // „Basis“ ist die aktuelle Oberkante der Säule: top-most y des Nachbarn - STACK_OFFSET
-          // (alle in einer Säule teilen sich dasselbe x; y reduziert sich pro Ebene)
           const stackTopY = Math.min(
             ...others.filter((p) => p.x === n.x).map((p) => p.y)
           );
@@ -393,24 +421,17 @@ export default function SceneBuilder({ scene, setScene }: Props) {
           targetY = Math.max(0, targetY);
           targetZ = n.z + 1;
         } else {
-          // Nebeneinander mit leichter Überlappung und gleicher Basishöhe wie Nachbar
           const leftSide = myCX < nCX;
           const wMe = visWidthPx(me);
           const wN = visWidthPx(n);
           targetY = n.y;
 
-          // bündig (mit kleiner optischer Überlappung)
-          const overlapX = Math.round(Math.min(wMe, wN) * 0.07); // ~7% Überlappung
+          const overlapX = Math.round(Math.min(wMe, wN) * 0.07);
           targetX = leftSide ? n.x - wMe + overlapX : n.x + wN - overlapX;
-
-          // clamping
           targetX = Math.max(0, Math.min(scene.size - piecePx, targetX));
-
-          // gleiche Ebene wie Nachbar
           targetZ = n.z;
         }
       } else {
-        // Kein Snap-Ziel: Mindestabstand zu allen erzwingen (weit auseinander)
         const pushAway = (ox: number, oy: number) => {
           let nx = targetX,
             ny = targetY;
@@ -440,16 +461,17 @@ export default function SceneBuilder({ scene, setScene }: Props) {
           }
         }
 
-        // wenn relativ frei: auf Boden „einrasten“
         if (Math.abs(targetY - floorY) > 2) targetY = floorY;
         targetZ = 0;
       }
     } else {
-      // kurzer Klick → Orientation wechseln
+      // short click → cycle orientation
       cycleOrientation(dragId);
       setDragId(null);
       return;
     }
+
+    actionLog.log("piece_moved", { shape: me.shape, color: me.color, x: targetX, y: targetY, z: targetZ });
 
     const newPieces = scene.pieces.map((p) =>
       p.id === dragId ? { ...p, x: targetX, y: targetY, z: targetZ } : p
@@ -479,25 +501,34 @@ export default function SceneBuilder({ scene, setScene }: Props) {
       userSelect: "none",
     };
 
+    // Apply rotation when pointing is set, OR as a live preview while dragging
+    // the arrow over a target.
+    const rotKey = `${p.shape}_${p.orientation}`;
+    const isArrowSource = arrowDragId === p.id;
+    const showRotation =
+      p.pointing != null || (isArrowSource && arrowDragHoverTarget != null);
+    const spriteRotDeg = showRotation ? (POINTING_SPRITE_ROTATION[rotKey] ?? 0) : 0;
+
     const imgStyle: React.CSSProperties = {
       width: "100%",
       height: "100%",
       objectFit: "contain",
-      transform: `scale(1.15)`,
-      pointerEvents: "none", // wichtig: Bild selbst fängt keine Events
+      transform: `scale(1.15) rotate(${spriteRotDeg}deg)`,
+      pointerEvents: "none",
     };
 
     const src = spriteFor(p);
+    const isArrowTarget = arrowDragHoverTarget === p.id;
 
     return (
       <div
         key={p.id}
-        className={`piece-wrap ${p.id === activeId ? "active" : ""}`}
+        className={`piece-wrap ${p.id === activeId ? "active" : ""}${isArrowTarget ? " arrow-target" : ""}`}
         style={baseWrap}
         onMouseDown={(e) => onPieceMouseDown(e, p.id)}
       >
-        {/* visuelles Outline separat, damit das X nicht verschoben wird */}
         {p.id === activeId && <div className="piece-outline" />}
+        {isArrowTarget && <div className="arrow-target-outline" />}
 
         {src ? (
           <img
@@ -510,21 +541,33 @@ export default function SceneBuilder({ scene, setScene }: Props) {
           <div className="piece-fallback" />
         )}
 
-        {/* Mini-X: immer da, aber nur bei Hover/aktiv sichtbar */}
+        {/* Mini-X: always rendered, visible on hover/active */}
         <button
           className="mini-x"
           title="Delete"
           onMouseDown={(e) => {
-            e.stopPropagation(); // kein Drag starten
+            e.stopPropagation();
             e.preventDefault();
           }}
           onClick={(e) => {
-            e.stopPropagation(); // kein Cycle
+            e.stopPropagation();
             deleteById(p.id);
           }}
         >
           ×
         </button>
+
+        {/* Mini-arrow: only for flat/cheesecake/doorstop orientations */}
+        {isPointableOrientation(p) && (
+          <button
+            className={`mini-arrow${p.pointing ? " has-pointing" : ""}`}
+            title={p.pointing ? "Change pointing target (drag)" : "Set pointing target (drag to a piece)"}
+            onMouseDown={(e) => onArrowMouseDown(e, p.id)}
+            onClick={(e) => e.stopPropagation()}
+          >
+            →
+          </button>
+        )}
       </div>
     );
   }
@@ -546,6 +589,11 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   };
   const previewSrc = spriteFor(preview);
 
+  // Arrow drag overlay: source piece center → cursor
+  const arrowDragSrc = arrowDragId
+    ? scene.pieces.find((p) => p.id === arrowDragId)
+    : null;
+
   return (
     <div className="builder panel">
       <div className="section-title">Scene Builder</div>
@@ -558,7 +606,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
               <button
                 key={s}
                 className={`shape ${selShape === s ? "active" : ""}`}
-                onClick={() => setSelShape(s)}
+                onClick={() => { actionLog.log("shape_selected", { shape: s }); setSelShape(s); }}
               >
                 {s}
               </button>
@@ -574,7 +622,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
                 style={{ backgroundColor: COLOR_HEX[c] }}
                 aria-label={c}
                 title={c}
-                onClick={() => setSelColor(c)}
+                onClick={() => { actionLog.log("color_selected", { color: c }); setSelColor(c); }}
               />
             ))}
           </div>
@@ -596,7 +644,11 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         <div
           ref={sceneRef}
           className="scene free"
-          style={{ width: canvasSize, height: canvasSize }}
+          style={{
+            width: canvasSize,
+            height: canvasSize,
+            cursor: arrowDragId ? "crosshair" : undefined,
+          }}
           onMouseMove={onSceneMouseMove}
           onMouseUp={onSceneMouseUp}
           onMouseLeave={onSceneMouseUp}
@@ -607,7 +659,45 @@ export default function SceneBuilder({ scene, setScene }: Props) {
             style={{ top: floorY + piecePx, width: canvasSize }}
           />
           {sorted.map((p) => renderPiece(p))}
+
+          {/* Arrow drag overlay */}
+          {arrowDragSrc && arrowDragCursor && (
+            <svg
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                zIndex: 999,
+              }}
+            >
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="7"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 8 3, 0 6" fill="#6c5ce7" />
+                </marker>
+              </defs>
+              <line
+                x1={arrowDragSrc.x + piecePx / 2}
+                y1={arrowDragSrc.y + piecePx / 2}
+                x2={arrowDragCursor.x}
+                y2={arrowDragCursor.y}
+                stroke="#6c5ce7"
+                strokeWidth={2}
+                strokeDasharray="5 3"
+                markerEnd="url(#arrowhead)"
+              />
+            </svg>
+          )}
         </div>
+
         <div className="builder-info">
           <div className="builder-info-title">Stacking & locking</div>
           <p>
@@ -627,6 +717,11 @@ export default function SceneBuilder({ scene, setScene }: Props) {
               <strong>Floor:</strong> pieces resting on the grey stripe are on
               the floor. Click a piece (without dragging) to cycle its
               orientation.
+            </li>
+            <li>
+              <strong>Pointing:</strong> flat blocks/pyramids and
+              cheesecake/doorstop wedges show a <strong>→</strong> button on
+              hover. Drag it to another piece to set the pointing relation.
             </li>
           </ul>
           <p className="builder-info-note">
