@@ -7,53 +7,93 @@ type Props = {
 
 const PAGES = [
   {
-    title: "Welcome & Study Information",
+    title: "Informed Consent",
     content: (
       <>
         <p>
-          Thank you for taking part in this study. Before you begin, please read
-          the following information carefully.
+          Please read this information carefully before proceeding. By continuing,
+          you confirm that you have read and understood this text and agree to
+          participate in the study.
         </p>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">What this study is about</h3>
+          <h3 className="instr-section-title">Purpose of the study</h3>
           <p>
-            You will play a concept-learning game called <strong>Zendo</strong>.
-            We are studying how people discover hidden rules through examples.
-            Your gameplay data will be used in academic research on human
-            inductive reasoning.
+            This study investigates how people learn visual rules in the game
+            Zendo. Your gameplay data will be used for academic research on human
+            inductive reasoning and concept learning. The project is conducted by
+            the research team at [“Darmstadt, TU Darmstadt”].
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">What data is collected</h3>
-          <ul className="instr-list">
-            <li>The scenes you build during the game</li>
-            <li>Your label guesses (does a scene follow the rule or not)</li>
-            <li>Your rule guesses (typed descriptions of the hidden rule)</li>
-            <li>Timing information (how long each turn takes)</li>
-          </ul>
+          <h3 className="instr-section-title">What participation involves</h3>
           <p>
-            Data is linked to the <strong>participant ID</strong> you enter on
-            the next screen — not to your name or any other personal
-            information.
+            You will play several rounds of Zendo, building scenes, guessing
+            labels, and formulating hypotheses about the hidden rule. Each
+            session takes about 20 minutes.
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Your rights</h3>
+          <h3 className="instr-section-title">Data collected and use</h3>
           <ul className="instr-list">
-            <li>Participation is voluntary. You may stop at any time.</li>
             <li>
-              Data is stored securely and used only for academic research.
+              The scenes you build, your YES/NO label guesses, and your typed
+              rule guesses.
             </li>
             <li>
-              Results will be published in aggregated, anonymised form.
+              Timing information (e.g., how long you take per turn).
+            </li>
+            <li>
+              Non‑identifying technical information (e.g., browser, screen size)
+              used only for data quality control.
             </li>
           </ul>
+          <p>
+            All data is linked only to a <strong>participant ID</strong> and not
+            to your name or other personal identifiers. Data will be stored
+            securely and used only for scientific analysis, teaching, and
+            publication.
+          </p>
+          <p>
+            Results will be reported in <strong>aggregated, anonymised form</strong>;
+            your individual data will not be published or shared with third parties.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="instr-section-title">Your rights and withdrawal</h3>
+          <ul className="instr-list">
+            <li>
+              Your participation is <strong>voluntary</strong>. You may stop at
+              any time without giving a reason and without any penalty.
+            </li>
+            <li>
+              If you stop part‑way, the data will not be kept.
+            </li>
+            <li>
+              You may ask for clarification or request deletion of your data
+              by contacting the research team at sophia.koehler@tu-darmstadt.de.
+            </li>
+          </ul>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="instr-section-title">Privacy and data protection</h3>
+          <p>
+            We comply with relevant data‑protection regulations (e.g., GDPR).
+            Data is stored on secure servers for 3 years, after which it will
+            be anonymised or deleted. Only authorised researchers will have
+            access to the raw data.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="instr-section-title">Contact</h3>
           <p className="instr-contact">
-            If you have questions, please contact the research team before
-            starting.
+            If you have questions about the study, data handling, or your rights,
+            you may contact: Sophia Koehler, TU Darmstadt, sophia.koehler@tu-darmstadt.de.
           </p>
         </div>
       </>
@@ -90,7 +130,7 @@ const PAGES = [
           </ul>
           <p>
             Pieces can also <strong>touch</strong> each other or be{" "}
-            <strong>stacked</strong> on top of one another, and flat or wedge
+            <strong>stacked</strong> on top of one another, and 
             pieces can <strong>point</strong> toward another piece.
           </p>
         </div>
@@ -112,8 +152,9 @@ const PAGES = [
           </ul>
           <p>
             You start with two example scenes (one YES, one NO) so you can
-            begin forming hypotheses straight away.
+            begin forming hypotheses straight away. All examples will be shown in the gallery at the top of the screen for easy comparison.
           </p>
+          <strong>You can click on the images to see a larger view and details about the pieces.</strong>
         </div>
       </>
     ),
@@ -130,13 +171,9 @@ const PAGES = [
               choose their shape, colour, and orientation.
             </li>
             <li>
-              <strong>Review your scene</strong> — a 3D render is shown. You
-              can retry if it does not look right.
-            </li>
-            <li>
               <strong>Predict the label</strong> — before the game master
               reveals the answer, guess whether your scene follows the rule
-              (YES or NO). A correct prediction earns you a guessing stone.
+              (YES or NO). A correct prediction earns you the possibility of guessing the hidden rule.
             </li>
             <li>
               <strong>See the result</strong> — the scene is added to your
@@ -148,14 +185,12 @@ const PAGES = [
         <div className="instr-section">
           <h3 className="instr-section-title">Guessing the rule</h3>
           <p>
-            After each turn you will be asked if you want to guess the hidden
-            rule. You need at least one <strong>guessing stone</strong> to make
-            a guess. If your guess is correct, you win. If it is wrong, the
+            In case you earned the possibility of guessing the hidden
+            rule, you can input your guess. If your guess is correct, you win. If it is wrong, the
             game master provides a counter-example and the game continues.
           </p>
           <p>
-            The game ends when you guess the rule correctly or after a maximum
-            number of examples have been shown.
+            The game ends when you guess the rule correctly or after 30 examples have been shown.
           </p>
         </div>
 
@@ -180,6 +215,17 @@ const PAGES = [
 export default function Instructions({ onContinue }: Props) {
   const [page, setPage] = useState(0);
   const isLast = page === PAGES.length - 1;
+  const [consented, setConsented] = useState(false);
+  const isFirstPage = page === 0;
+  const nextDisabled = isFirstPage && !consented;
+
+  const handleNext = () => {
+    if (isLast) {
+      onContinue();
+    } else {
+      setPage((p) => p + 1);
+    }
+  };
 
   return (
     <div className="instr-wrapper">
@@ -195,7 +241,23 @@ export default function Instructions({ onContinue }: Props) {
 
         <h2 className="instr-title">{PAGES[page].title}</h2>
 
-        <div className="instr-body">{PAGES[page].content}</div>
+        <div className="instr-body">
+          {PAGES[page].content}
+
+          {isFirstPage && (
+            <label className="instr-consent">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+              />
+              <span>
+                I have read and understood the information above and agree to
+                participate in this study.
+              </span>
+            </label>
+          )}
+        </div>
 
         <div className="instr-footer">
           {page > 0 && (
@@ -203,9 +265,11 @@ export default function Instructions({ onContinue }: Props) {
               Back
             </button>
           )}
+
           <button
             className="btn primary"
-            onClick={() => (isLast ? onContinue() : setPage((p) => p + 1))}
+            onClick={handleNext}
+            disabled={nextDisabled}
           >
             {isLast ? "I understand — start the study" : "Next"}
           </button>

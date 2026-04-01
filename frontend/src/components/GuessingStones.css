@@ -1,24 +1,27 @@
 .stones {
   display: flex;
   flex-direction: column;
-  min-height: 110px;
+  min-height: clamp(100px, 8vh, 110px);
   flex: 1;
 }
 
 .stones .header {
   font-weight: 700;
-  margin-bottom: 4px; /* was 8px */
+  font-size: 13px;
+  margin-bottom: 4px;
 }
 .rowline {
   display: flex;
   align-items: center;
-  gap: 6px; /* was 8px */
-  margin: 2px 0; /* was 6px 0 */
+  gap: 6px;
+  margin: 2px 0;
+  font-size: 13px;
 }
 
 .lbl {
-  width: 60px; /* was 70px */
+  width: 52px;
   font-weight: 700;
+  font-size: 13px;
 }
 
 .dot {

@@ -1,9 +1,17 @@
+.imagepanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
 .imagepanel .header {
   font-weight: 700;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 .frame {
-  height: 240px;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--border);
   background: #ededed;
   border-radius: 4px;
@@ -12,8 +20,9 @@
   justify-content: center;
 }
 .frame img {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 .ph {
   width: 70%;

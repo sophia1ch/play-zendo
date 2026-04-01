@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { SceneJSON, Piece, Shape, ColorName, Orientation } from "../types";
 import { spriteFor } from "../sprites";
 import * as actionLog from "../actionLog";
 import "./SceneBuilder.css";
+
+export type SceneBuilderHandle = {
+  captureScene: () => Promise<string>;
+};
 
 type Props = { scene: SceneJSON; setScene: (s: SceneJSON) => void };
 
@@ -38,12 +42,37 @@ const POINTING_SPRITE_ROTATION: Record<string, number> = {
   wedge_doorstop: 350, 
 };
 
-export default function SceneBuilder({ scene, setScene }: Props) {
-  // visual canvas is at least 420x420, even if scene.size is smaller
-  const canvasSize = Math.max(scene.size, 420);
+const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder({ scene, setScene }, ref) {
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+  const [canvasW, setCanvasW] = useState(Math.max(scene.size, 420));
+  const [canvasH, setCanvasH] = useState(200);
 
-  const piecePx = Math.max(56, Math.min(110, Math.round(canvasSize / 7)));
-  const floorY = canvasSize - piecePx - 10;
+  const prevSizeRef = useRef<{ w: number; h: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const wrapEl = canvasWrapRef.current;
+    const sceneEl = sceneRef.current;
+    if (!wrapEl || !sceneEl) return;
+    const measure = () => {
+      const availH = Math.max(sceneEl.clientHeight, 50);
+      const availW = Math.max(wrapEl.clientWidth, 320);
+      const prev = prevSizeRef.current;
+      if (prev !== null && (prev.w !== availW || prev.h !== availH)) {
+        setScene({ id: crypto.randomUUID(), size: 320, pieces: [] });
+      }
+      prevSizeRef.current = { w: availW, h: availH };
+      setCanvasW(availW);
+      setCanvasH(availH);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(sceneEl);
+    ro.observe(wrapEl);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+
+  const piecePx = Math.max(56, Math.min(110, Math.round(Math.min(canvasW, canvasH) / 7)));
+  const floorY = canvasH - piecePx - 10;
   const OVERLAP = 6;
   const ADJ_STEP = piecePx - OVERLAP;
   const FAR_SEP = piecePx + 24;
@@ -187,12 +216,12 @@ export default function SceneBuilder({ scene, setScene }: Props) {
   };
 
   function addPiece() {
-    const center = Math.round((canvasSize - piecePx) / 2);
+    const center = Math.round((canvasW - piecePx) / 2);
     const slots: number[] = [center];
     for (let i = 1; i < 20; i++) {
       const right = center + i * ADJ_STEP;
       const left = center - i * ADJ_STEP;
-      if (right <= canvasSize - piecePx) slots.push(right);
+      if (right <= canvasW - piecePx) slots.push(right);
       if (left >= 0) slots.push(left);
     }
 
@@ -200,7 +229,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     const taken = new Set(floorPieces.map((p) => Math.round(p.x)));
 
     const freeX = slots.find((x) => !taken.has(Math.round(x))) ?? center;
-    const x = Math.max(0, Math.min(canvasSize - piecePx, freeX));
+    const x = Math.max(0, Math.min(canvasW - piecePx, freeX));
     const y = floorY;
 
     const piece: Piece = {
@@ -348,7 +377,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     const nx = clamp(
       Math.round(e.clientX - rect.left - dragOffset.current.dx),
       0,
-      canvasSize - piecePx
+      canvasW - piecePx
     );
     const ny = clamp(
       Math.round(e.clientY - rect.top - dragOffset.current.dy),
@@ -361,6 +390,43 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         p.id === dragId ? { ...p, x: nx, y: ny } : p
       ),
     });
+  }
+
+  function applyGravity(pieces: Piece[]): Piece[] {
+    const result = pieces.map((p) => ({ ...p }));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const p of result) {
+        if (Math.abs(p.y - floorY) <= 2) continue; // already on floor
+
+        const isSupported = result.some(
+          (other) =>
+            other.id !== p.id &&
+            Math.abs(other.x - p.x) <= 4 &&
+            Math.abs(other.y - (p.y + STACK_OFFSET)) <= 4
+        );
+        if (isSupported) continue;
+
+        // Find pieces in the same column that are below this one
+        const belowPieces = result.filter(
+          (other) => other.id !== p.id && Math.abs(other.x - p.x) <= 4 && other.y > p.y
+        );
+
+        if (belowPieces.length > 0) {
+          const topPiece = belowPieces.reduce((a, b) => (a.y < b.y ? a : b));
+          p.y = topPiece.y - STACK_OFFSET;
+          p.x = topPiece.x;
+          p.z = topPiece.z + 1;
+        } else {
+          p.y = floorY;
+          p.z = 0;
+        }
+        p.pointing = null;
+        changed = true;
+      }
+    }
+    return result;
   }
 
   function onSceneMouseUp(e: React.MouseEvent) {
@@ -387,7 +453,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
       Math.hypot(e.clientX - downPos.current.x, e.clientY - downPos.current.y) >
       4;
     const me = scene.pieces.find((p) => p.id === dragId)!;
-    let targetX = Math.max(0, Math.min(scene.size - piecePx, me.x));
+    let targetX = Math.max(0, Math.min(canvasW - piecePx, me.x));
     let targetY = me.y;
     let targetZ = me.z;
 
@@ -396,6 +462,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
 
       type Cand = { p: Piece; dist: number };
       const cands: Cand[] = others
+        .filter((p) => p.pointing === null) // pointing pieces cannot be snapped to
         .map((p) => {
           const d = Math.hypot(
             p.x + piecePx / 2 - (me.x + piecePx / 2),
@@ -428,7 +495,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
 
           const overlapX = Math.round(Math.min(wMe, wN) * 0.07);
           targetX = leftSide ? n.x - wMe + overlapX : n.x + wN - overlapX;
-          targetX = Math.max(0, Math.min(scene.size - piecePx, targetX));
+          targetX = Math.max(0, Math.min(canvasW - piecePx, targetX));
           targetZ = n.z;
         }
       } else {
@@ -444,7 +511,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
             ny += Math.round((dy / len) * need);
           }
           return {
-            x: Math.max(0, Math.min(canvasSize - piecePx, nx)),
+            x: Math.max(0, Math.min(canvasW - piecePx, nx)),
             y: Math.max(0, Math.min(floorY, ny)),
           };
         };
@@ -462,7 +529,20 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         }
 
         if (Math.abs(targetY - floorY) > 2) targetY = floorY;
-        targetZ = 0;
+
+        // If a piece already occupies this floor position, stack on top instead of overlapping.
+        const floorNeighbor = others.find(
+          (p) => Math.abs(p.x - targetX) <= 4 && Math.abs(p.y - floorY) <= 2 && p.pointing === null
+        );
+        if (floorNeighbor) {
+          const allAtX = others.filter((p) => Math.abs(p.x - targetX) <= 4);
+          const topY = Math.min(...allAtX.map((p) => p.y));
+          targetY = Math.max(0, topY - STACK_OFFSET);
+          targetX = floorNeighbor.x;
+          targetZ = floorNeighbor.z + 1;
+        } else {
+          targetZ = 0;
+        }
       }
     } else {
       // short click → cycle orientation
@@ -474,12 +554,16 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     actionLog.log("piece_moved", { shape: me.shape, color: me.color, x: targetX, y: targetY, z: targetZ });
 
     const newPieces = scene.pieces.map((p) =>
-      p.id === dragId ? { ...p, x: targetX, y: targetY, z: targetZ } : p
+      p.id === dragId
+        ? { ...p, x: targetX, y: targetY, z: targetZ, pointing: null }
+        : p.pointing === dragId
+        ? { ...p, pointing: null }
+        : p
     );
 
     setScene({
       ...scene,
-      pieces: recomputeRelations(newPieces),
+      pieces: recomputeRelations(applyGravity(newPieces)),
     });
     console.log("Scene", scene);
     setDragId(null);
@@ -558,7 +642,7 @@ export default function SceneBuilder({ scene, setScene }: Props) {
         </button>
 
         {/* Mini-arrow: only for flat/cheesecake/doorstop orientations */}
-        {isPointableOrientation(p) && (
+        {isPointableOrientation(p) && p.onTop === null && (
           <button
             className={`mini-arrow${p.pointing ? " has-pointing" : ""}`}
             title={p.pointing ? "Change pointing target (drag)" : "Set pointing target (drag to a piece)"}
@@ -594,144 +678,145 @@ export default function SceneBuilder({ scene, setScene }: Props) {
     ? scene.pieces.find((p) => p.id === arrowDragId)
     : null;
 
+  useImperativeHandle(ref, () => ({
+    async captureScene(): Promise<string> {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext("2d")!;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      // Floor stripe
+      const floorTop = floorY + piecePx;
+      for (let x = 0; x < canvasW; x += 16) {
+        ctx.fillStyle = "rgba(0,0,0,0.08)";
+        ctx.fillRect(x, floorTop, 8, 6);
+      }
+
+      // Load all sprites in parallel, then draw in sorted (z) order
+      const sortedPieces = [...scene.pieces].sort(
+        (a, b) => a.y - b.y || a.x - b.x || a.z - b.z
+      );
+      const loaded = await Promise.all(
+        sortedPieces.map(
+          (p) =>
+            new Promise<{ p: Piece; img: HTMLImageElement | null }>((resolve) => {
+              const src = spriteFor(p);
+              if (!src) { resolve({ p, img: null }); return; }
+              const img = new Image();
+              img.onload = () => resolve({ p, img });
+              img.onerror = () => resolve({ p, img: null });
+              img.src = src;
+            })
+        )
+      );
+      for (const { p, img } of loaded) {
+        if (img) ctx.drawImage(img, p.x, p.y, piecePx, piecePx);
+      }
+
+      return canvas.toDataURL("image/png");
+    },
+  }), [scene, canvasW, canvasH, piecePx, floorY]);
+
   return (
-    <div className="builder panel">
-      <div className="section-title">Scene Builder</div>
+    <div className="sb panel">
+      <div className="sb-body">
 
-      <div className="row builder-row" style={{ gap: 12 }}>
-        <div className="palette">
-          <div className="label">Shape</div>
-          <div className="stack">
-            {SHAPES.map((s) => (
-              <button
-                key={s}
-                className={`shape ${selShape === s ? "active" : ""}`}
-                onClick={() => { actionLog.log("shape_selected", { shape: s }); setSelShape(s); }}
-              >
-                {s}
-              </button>
-            ))}
+        {/* ── Palette ── */}
+        <aside className="sb-palette">
+          <div className="sb-palette-main">
+            <div className="sb-section">
+              <span className="sb-label">Shape</span>
+              {SHAPES.map((s) => (
+                <button
+                  key={s}
+                  className={`sb-shape${selShape === s ? " active" : ""}`}
+                  onClick={() => { actionLog.log("shape_selected", { shape: s }); setSelShape(s); }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            <div className="sb-section">
+              <span className="sb-label">Color</span>
+              <div className="sb-colors">
+                {COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`sb-swatch${selColor === c ? " active" : ""}`}
+                    style={{ backgroundColor: COLOR_HEX[c] }}
+                    onClick={() => { actionLog.log("color_selected", { color: c }); setSelColor(c); }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="sb-section">
+              <span className="sb-label">Preview</span>
+              <div className="sb-preview-wrap">
+                {previewSrc
+                  ? <img src={previewSrc} alt="preview" />
+                  : <span className="sb-placeholder">—</span>}
+              </div>
+            </div>
           </div>
 
-          <div className="label">Color</div>
-          <div className="stack">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                className={`color swatch ${selColor === c ? "active" : ""}`}
-                style={{ backgroundColor: COLOR_HEX[c] }}
-                aria-label={c}
-                title={c}
-                onClick={() => { actionLog.log("color_selected", { color: c }); setSelColor(c); }}
-              />
-            ))}
-          </div>
+          <button className="sb-add" onClick={addPiece}>
+            + Add
+          </button>
+        </aside>
 
-          <div className="label">Preview</div>
-          <div className="preview">
-            {previewSrc ? (
-              <img src={previewSrc} alt="preview" />
-            ) : (
-              <div className="placeholder">—</div>
+        {/* ── Scene ── */}
+        <div className="sb-canvas-wrap" ref={canvasWrapRef}>
+          <div
+            ref={sceneRef}
+            className="sb-scene"
+            style={{ width: canvasW, cursor: arrowDragId ? "crosshair" : undefined }}
+            onMouseMove={onSceneMouseMove}
+            onMouseUp={onSceneMouseUp}
+            onMouseLeave={onSceneMouseUp}
+            onClick={() => setActiveId(null)}
+          >
+            <div className="sb-floor" style={{ top: floorY + piecePx, width: canvasW }} />
+            {sorted.map((p) => renderPiece(p))}
+
+            {arrowDragSrc && arrowDragCursor && (
+              <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 999 }}>
+                <defs>
+                  <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#6c5ce7" />
+                  </marker>
+                </defs>
+                <line
+                  x1={arrowDragSrc.x + piecePx / 2} y1={arrowDragSrc.y + piecePx / 2}
+                  x2={arrowDragCursor.x} y2={arrowDragCursor.y}
+                  stroke="#6c5ce7" strokeWidth={2} strokeDasharray="5 3"
+                  markerEnd="url(#arrowhead)"
+                />
+              </svg>
             )}
           </div>
-
-          <button className="btn add" onClick={addPiece}>
-            Add
-          </button>
         </div>
 
-        <div
-          ref={sceneRef}
-          className="scene free"
-          style={{
-            width: canvasSize,
-            height: canvasSize,
-            cursor: arrowDragId ? "crosshair" : undefined,
-          }}
-          onMouseMove={onSceneMouseMove}
-          onMouseUp={onSceneMouseUp}
-          onMouseLeave={onSceneMouseUp}
-          onClick={() => setActiveId(null)}
-        >
-          <div
-            className="floor"
-            style={{ top: floorY + piecePx, width: canvasSize }}
-          />
-          {sorted.map((p) => renderPiece(p))}
-
-          {/* Arrow drag overlay */}
-          {arrowDragSrc && arrowDragCursor && (
-            <svg
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                pointerEvents: "none",
-                zIndex: 999,
-              }}
-            >
-              <defs>
-                <marker
-                  id="arrowhead"
-                  markerWidth="8"
-                  markerHeight="6"
-                  refX="7"
-                  refY="3"
-                  orient="auto"
-                >
-                  <polygon points="0 0, 8 3, 0 6" fill="#6c5ce7" />
-                </marker>
-              </defs>
-              <line
-                x1={arrowDragSrc.x + piecePx / 2}
-                y1={arrowDragSrc.y + piecePx / 2}
-                x2={arrowDragCursor.x}
-                y2={arrowDragCursor.y}
-                stroke="#6c5ce7"
-                strokeWidth={2}
-                strokeDasharray="5 3"
-                markerEnd="url(#arrowhead)"
-              />
-            </svg>
-          )}
-        </div>
-
-        <div className="builder-info">
-          <div className="builder-info-title">Stacking & locking</div>
-          <p>
-            When you drop a piece near another one, it will try to{" "}
-            <strong>lock</strong> into a realistic position:
-          </p>
+        {/* ── Info ── */}
+        <aside className="sb-info">
+          <div className="sb-info-title">Stacking &amp; locking</div>
+          <p>When you drop a piece near another, it locks into a realistic position:</p>
           <ul>
-            <li>
-              <strong>Side-by-side:</strong> pieces snap next to each other with
-              a small overlap if they are at the same height.
-            </li>
-            <li>
-              <strong>On top:</strong> if you drop a piece above another in
-              almost the same column, it will stack directly on top.
-            </li>
-            <li>
-              <strong>Floor:</strong> pieces resting on the grey stripe are on
-              the floor. Click a piece (without dragging) to cycle its
-              orientation.
-            </li>
-            <li>
-              <strong>Pointing:</strong> flat blocks/pyramids and
-              cheesecake/doorstop wedges show a <strong>→</strong> button on
-              hover. Drag it to another piece to set the pointing relation.
-            </li>
+            <li><strong>Side-by-side:</strong> pieces snap next to each other with a small overlap at the same height.</li>
+            <li><strong>On top:</strong> drop above another piece in the same column to stack directly on top.</li>
+            <li><strong>Floor:</strong> pieces on the grey stripe are on the floor. Click without dragging to cycle orientation.</li>
+            <li><strong>Pointing:</strong> flat blocks/pyramids and cheesecake/doorstop wedges show a <strong>→</strong> on hover — drag it to another piece.</li>
           </ul>
-          <p className="builder-info-note">
-            Please build scenes that could exist in the{" "}
-            <strong>real world</strong>: no floating pieces and no upside_down
-            pyramids (or other unstable shapes) unless they are obviously
-            stabilized by something underneath or around them.
-          </p>
-        </div>
+          <p className="sb-info-note">Build scenes that could exist in the <strong>real world</strong>: no floating pieces or unstable shapes unless clearly supported.</p>
+        </aside>
+
       </div>
     </div>
   );
-}
+});
+
+export default SceneBuilder;

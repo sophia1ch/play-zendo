@@ -8,6 +8,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- jatos.js is served automatically by the JATOS server.
+         The onerror handler silently ignores missing file in local dev. -->
+    <script src="/assets/javascripts/jatos.js" onerror="console.info('jatos.js not found — running outside JATOS')"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

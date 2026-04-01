@@ -13,11 +13,11 @@ export default function ReviewScreen({
   onRetry,
 }: Props) {
   return (
-    <div className="row" style={{ gap: 12 }}>
-      <div className="panel" style={{ flex: 1, padding: 10 }}>
+    <div className="row" style={{ gap: 12, height: "100%", minHeight: 0 }}>
+      <div className="panel" style={{ flex: 1, padding: 10, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <ImagePanel title="Rendered Image" dataUrl={image} />
       </div>
-      <div className="panel" style={{ width: 260, padding: 10 }}>
+      <div className="panel" style={{ width: "clamp(140px, 20vw, 260px)", flexShrink: 0, padding: 10 }}>
         <div className="col" style={{ gap: 10, marginTop: 10 }}>
           <button className="btn" onClick={onRetry} disabled={!onRetry}>
             Retry

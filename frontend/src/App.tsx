@@ -2,26 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import "./styles/global.css";
 import TopStrip from "./components/TopStrip";
 import BuildSceneScreen from "./screens/BuildSceneScreen";
-import ReviewScreen from "./screens/ReviewScreen";
 import GuessLabelScreen from "./screens/GuessLabelScreen";
 import RuleInputScreen from "./screens/RuleInputScreen";
-import type { Label, SceneJSON, WSMessage } from "./types";
+import type { SceneJSON, WSMessage, Label } from "./types";
 import { wsConnect } from "./api";
-import StartScreen from "./components/StartScreen";
 import Instructions from "./components/Instructions";
 import GuessingStones from "./components/GuessingStones";
 import PreviousGuesses from "./components/PreviousGuesses";
 import Loading from "./components/Loading";
 import GameOver from "./screens/GameOver";
-import type { MultiPlayer, Mode } from "./components/StartScreen";
 import * as actionLog from "./actionLog";
+
+// Stable session ID — always a UUID so it's valid even before JATOS initialises.
+// The real JATOS workerId is recorded in the result metadata at submission time.
+const PARTICIPANT_ID = `s_${crypto.randomUUID().slice(0, 8)}`;
 
 export default function App() {
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [isStudyComplete, setIsStudyComplete] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(
-    () => !localStorage.getItem("zendo_visited")
-  );
+  // const [showInstructions, setShowInstructions] = useState(
+  //   () => !localStorage.getItem("zendo_visited")
+  // );
 
   const [scene, setScene] = useState<SceneJSON>({
     id: crypto.randomUUID(),
@@ -29,7 +30,6 @@ export default function App() {
     pieces: [],
   });
 
-  const [image, setImage] = useState<string>("");
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [waitingForServer, setWaitingForServer] = useState(false);
 
@@ -52,8 +52,6 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const backendSessionIdRef = useRef<string | null>(null);
-  const lastStartParamsRef = useRef<{ mode: Mode; player: MultiPlayer; name: string } | null>(null);
-  const pendingLabelRef = useRef<Label | null>(null);
 
   const stepRef = useRef<0 | 1 | 2 | 3 | 4 | 5>(0);
   const loadingInitialRef = useRef(false);
@@ -89,7 +87,6 @@ export default function App() {
 
   function resetGameUiState() {
     setScene({ id: crypto.randomUUID(), size: 320, pieces: [] });
-    setImage("");
     setWaitingForServer(false);
     setPosImages([]);
     setNegImages([]);
@@ -102,7 +99,6 @@ export default function App() {
     setGameWinner(null);
     setGameRule(null);
     setGameOverMessage(null);
-    pendingLabelRef.current = null;
     messageQueueRef.current = [];
   }
 
@@ -188,25 +184,18 @@ export default function App() {
       }
 
       case "player_finished": {
-        actionLog.log("study_complete");
+        actionLog.log("session_complete");
         setLoadingInitial(false);
         setWaitingForServer(false);
         setIsStudyComplete(true);
-        setStep(0);
+        // Submit results to JATOS now, in the background.
+        // The GameOver screen remains visible; the button calls endStudy when ready.
+        actionLog.sendLog(wsRef.current);
+        void actionLog.submitToJatos();
         return;
       }
 
       case "human_guess_label_request": {
-        const pending = pendingLabelRef.current;
-        if (pending !== null) {
-          pendingLabelRef.current = null;
-          actionLog.log("auto_guess_label", { label: pending });
-          if (sendWS({ type: "guess_label", label: pending })) {
-            setWaitingForServer(true);
-          }
-          return;
-        }
-
         actionLog.log("screen_change", { to: "guess_label" });
         setCurrentGuessImage(msg.imageDataUrl || "");
         setWaitingForServer(false);
@@ -226,13 +215,9 @@ export default function App() {
         return;
       }
 
-      case "human_scene_preview": {
-        actionLog.log("screen_change", { to: "review" });
-        setImage(msg.imageDataUrl || "");
-        setWaitingForServer(false);
-        setStep(2);
+      case "human_scene_preview":
+        // No longer shown — backend now goes straight to guess_label.
         return;
-      }
 
       case "game_system_message": {
         const text = msg.text ?? "";
@@ -251,26 +236,23 @@ export default function App() {
           if (match1) {
             winner = Number(match1[1]);
             rule = match1[2] || null;
-            setGameWinner(winner);
-            setGameRule(rule);
-            setGameOverMessage(text);
-            setStep(5);
-            return;
           }
 
-          const match2 = text.match(
-            /^Player\s+(\d+)\s+guessed a rule:\s*(.*?),\s*the Gamemaster could not disprove\.\s*Game over\.\s*True Rule:\s*(.*)$/
-          );
-
-          if (match2) {
-            winner = Number(match2[1]);
-            rule = match2[3] || null;
-            setGameWinner(winner);
-            setGameRule(rule);
-            setGameOverMessage(text);
-            setStep(5);
-            return;
+          if (!match1) {
+            const match2 = text.match(
+              /^Player\s+(\d+)\s+guessed a rule:\s*(.*?),\s*the Gamemaster could not disprove\.\s*Game over\.\s*True Rule:\s*(.*)$/
+            );
+            if (match2) {
+              winner = Number(match2[1]);
+              rule = match2[3] || null;
+            }
           }
+
+          setGameWinner(winner);
+          setGameRule(rule);
+          setGameOverMessage(text);
+          setStep(5);
+          return;
         }
 
         if (
@@ -317,6 +299,29 @@ export default function App() {
 
     wsRef.current = ws;
 
+    // ws.addEventListener("open", () => {
+    //   // If instructions already seen, start immediately
+    //   if (localStorage.getItem("zendo_visited")) {
+    //     setShowInstructions(false);
+    //     // Use timeout to let React flush state before sending WS message
+    //     setTimeout(() => {
+    //       const id = crypto.randomUUID();
+    //       actionLog.startTask(id);
+    //       actionLog.log("game_started", { mode: "single", name: PARTICIPANT_ID });
+    //       setIsStudyComplete(false);
+    //       setLoadingInitial(true);
+    //       setPlayerIndex(0);
+    //       ws.send(JSON.stringify({
+    //         type: "start",
+    //         player: "",
+    //         mode: "single",
+    //         name: PARTICIPANT_ID,
+    //       }));
+    //       setWaitingForServer(true);
+    //     }, 0);
+    //   }
+    // });
+
     ws.addEventListener("close", () => {
       console.warn("WebSocket closed");
       setWaitingForServer(false);
@@ -333,35 +338,33 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleStartGame(mode: Mode, player: MultiPlayer, name: string) {
+  function startGame() {
     if (!canSend()) {
       console.warn("No open WebSocket when starting game");
       return;
     }
 
-    lastStartParamsRef.current = { mode, player, name };
-
     const id = crypto.randomUUID();
     actionLog.startTask(id);
-    actionLog.log("game_started", { mode, player, name });
+    actionLog.log("game_started", { mode: "single", name: PARTICIPANT_ID });
 
     resetGameUiState();
     setIsStudyComplete(false);
     setLoadingInitial(true);
     setStep(0);
-    setPlayerIndex(mode === "multi" ? 1 : 0);
+    setPlayerIndex(0);
 
     sendWS({
       type: "start",
-      player,
-      mode,
-      name,
+      player: "",
+      mode: "single",
+      name: PARTICIPANT_ID,
     });
 
     setWaitingForServer(true);
   }
 
-  function handleSceneSubmit(builtScene: SceneJSON) {
+  function handleSceneSubmit(builtScene: SceneJSON, imageDataUrl: string) {
     actionLog.log("scene_submitted", {
       pieceCount: builtScene.pieces.length,
       pieces: builtScene.pieces.map((p) => ({
@@ -371,30 +374,7 @@ export default function App() {
       })),
     });
 
-    if (sendWS({ type: "scene_built", scene: builtScene })) {
-      setWaitingForServer(true);
-    }
-  }
-
-  function handleReviewRetry() {
-    actionLog.log("review_retry");
-    if (sendWS({ type: "scene_decision", action: "retry" })) {
-      setWaitingForServer(true);
-    }
-  }
-
-  function handleReviewFollows() {
-    actionLog.log("review_follows_rule");
-    pendingLabelRef.current = "YES";
-    if (sendWS({ type: "scene_decision", action: "submit", mode: "QUIZ" })) {
-      setWaitingForServer(true);
-    }
-  }
-
-  function handleReviewNotFollows() {
-    actionLog.log("review_not_follows_rule");
-    pendingLabelRef.current = "NO";
-    if (sendWS({ type: "scene_decision", action: "submit", mode: "QUIZ" })) {
+    if (sendWS({ type: "scene_built", scene: builtScene, imageDataUrl })) {
       setWaitingForServer(true);
     }
   }
@@ -421,38 +401,24 @@ export default function App() {
 
   function handleNextGame() {
     actionLog.log("next_game_clicked");
-    actionLog.sendLog(wsRef.current);
     actionLog.downloadLog();
 
-    resetGameUiState();
-
-    const params = lastStartParamsRef.current;
-    if (params && canSend()) {
-      const id = crypto.randomUUID();
-      actionLog.startTask(id);
-
-      setIsStudyComplete(false);
-      setLoadingInitial(true);
-      setStep(0);
-
-      sendWS({
-        type: "start",
-        player: params.player,
-        mode: params.mode,
-        name: params.name,
-      });
-
-      setWaitingForServer(true);
-    } else {
-      setLoadingInitial(false);
-      setStep(0);
+    if (isStudyComplete) {
+      // Results were already submitted in the player_finished handler.
+      if (window.jatos) window.jatos.endStudy(true);
+      else setStep(0); // local dev: just return to start
+      return;
     }
+
+    actionLog.sendLog(wsRef.current);
+    resetGameUiState();
+    startGame();
   }
 
   const youWon = gameWinner === playerIndexRef.current;
 
   return (
-    <div className="container col" style={{ gap: 12 }}>
+    <div className="container col" style={{ gap: 12, height: "100dvh", overflow: "hidden" }}>
       {step !== 0 && (
         <>
           <TopStrip
@@ -490,17 +456,21 @@ export default function App() {
           </div>
         )}
 
-        {step === 0 && !isStudyComplete && !loadingInitial && showInstructions && (
+        {step === 0 && !isStudyComplete && !loadingInitial && (
           <Instructions
             onContinue={() => {
               localStorage.setItem("zendo_visited", "true");
-              setShowInstructions(false);
+              actionLog.setMetadata({
+                consented: true,
+                userAgent: navigator.userAgent,
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+                jatoWorkerId: window.jatos?.workerId,
+              });
+              // setShowInstructions(false);
+              startGame();
             }}
           />
-        )}
-
-        {step === 0 && !isStudyComplete && !loadingInitial && !showInstructions && (
-          <StartScreen loading={loadingInitial} onStart={handleStartGame} />
         )}
 
         {step === 0 && !isStudyComplete && loadingInitial && (
@@ -517,15 +487,6 @@ export default function App() {
             scene={scene}
             setScene={setScene}
             onSubmit={handleSceneSubmit}
-          />
-        )}
-
-        {step === 2 && (
-          <ReviewScreen
-            image={image}
-            onFollowsRule={handleReviewFollows}
-            onNotFollowsRule={handleReviewNotFollows}
-            onRetry={handleReviewRetry}
           />
         )}
 

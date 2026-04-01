@@ -14,7 +14,7 @@ export default function GuessingStones({ yours, others }: Props) {
         {/* {Array.from({ length: yours }).map((_, i) => (
           <div key={i} className="dot" />
         ))} */}
-        <h3 style={{ margin: 0 }}>{yours}</h3>
+        <h4 style={{ margin: 0 }}>{yours}</h4>
       </div>
       {others !== undefined && (
         <div className="rowline">

@@ -10,6 +10,7 @@
   flex: 1 1 0;
   min-width: 0;
   padding: 8px;
+  font-size: 11px;
 }
 
 /* Container for the thumbnails – horizontal scrollable within fixed strip */
@@ -41,8 +42,8 @@
 /* Single thumbnail */
 .thumb {
   flex: 0 0 auto; /* fixed-size items, scroll horizontally */
-  width: 120px;
-  height: 48px;
+  width: clamp(70px, 8vw, 120px);
+  height: clamp(40px, 4vw, 70px);
   background: #ddd;
   border: 1px solid var(--border);
   border-radius: 4px;

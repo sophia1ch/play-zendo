@@ -16,13 +16,15 @@ body {
 .main-content {
   position: relative;
   width: 100%;
-  /* optionally */
-  /* flex: 1; */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 12px; /* was 16px */
+  width: 100%;
+  padding: clamp(6px, 1.5vw, 12px);
 }
 .panel {
   background: var(--panel);

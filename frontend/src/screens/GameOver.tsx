@@ -30,7 +30,7 @@ export default function GameOver({
         {!rule && message && <p className="gameover-text">{message}</p>}
 
         <button className="btn primary gameover-button" onClick={() => { actionLog.log("game_over_next_clicked", { youWon, rule }); nextGame(); }}>
-          Continue to next task
+          Finish session
         </button>
       </div>
     </div>

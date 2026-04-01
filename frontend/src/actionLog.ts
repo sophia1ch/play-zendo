@@ -13,8 +13,22 @@ export type ActionEntry = {
   details: Record<string, unknown>;
 };
 
+export type SessionMetadata = {
+  consented: true;
+  userAgent: string;
+  screenWidth: number;
+  screenHeight: number;
+  jatoWorkerId?: number;
+};
+
 let taskId: string | null = null;
 let entries: ActionEntry[] = [];
+let metadata: SessionMetadata | null = null;
+
+/** Record consent and non-identifying technical info at the start of a session. */
+export function setMetadata(m: SessionMetadata): void {
+  metadata = m;
+}
 
 /** Start a new task / game session. Clears previous log. */
 export function startTask(id: string): void {
@@ -75,4 +89,15 @@ export function sendLog(ws: WebSocket | null): void {
       entries,
     })
   );
+}
+
+/**
+ * Submit all accumulated entries to JATOS as result data.
+ * No-op when running outside JATOS (local dev).
+ * Returns a Promise so callers can await it before advancing the study.
+ */
+export async function submitToJatos(): Promise<void> {
+  if (!window.jatos) return;
+  const payload = { taskId, metadata, entries };
+  await window.jatos.submitResultData(payload);
 }
