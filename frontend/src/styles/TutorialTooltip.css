@@ -1,0 +1,139 @@
+.tutorial-tooltip {
+  background: #1a202c;
+  color: #f7fafc;
+  padding: 11px 15px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  animation: tut-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes tut-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Arrow pseudo-element shared base */
+.tutorial-tooltip::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 9px solid transparent;
+}
+
+/* Tooltip ABOVE target → arrow points DOWN */
+.tutorial-tooltip.arrow-down::after {
+  top: 100%;
+  left: 50%;
+  margin-left: -9px;
+  border-top-color: #1a202c;
+}
+
+/* Tooltip BELOW target → arrow points UP */
+.tutorial-tooltip.arrow-up::after {
+  bottom: 100%;
+  left: 50%;
+  margin-left: -9px;
+  border-bottom-color: #1a202c;
+}
+
+/* Tooltip LEFT of target → arrow points RIGHT */
+.tutorial-tooltip.arrow-right::after {
+  left: 100%;
+  top: 50%;
+  margin-top: -9px;
+  border-left-color: #1a202c;
+}
+
+/* Tooltip RIGHT of target → arrow points LEFT */
+.tutorial-tooltip.arrow-left::after {
+  right: 100%;
+  top: 50%;
+  margin-top: -9px;
+  border-right-color: #1a202c;
+}
+
+/* ── Highlight pulse for tutorial targets ───────────────────────────── */
+@keyframes tut-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 179, 237, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(99, 179, 237, 0);
+  }
+}
+
+@keyframes tut-pulse-outline {
+  0%,
+  100% {
+    outline-color: rgba(99, 179, 237, 0.9);
+  }
+  50% {
+    outline-color: rgba(99, 179, 237, 0.3);
+  }
+}
+
+/* Phase-specific highlights applied via data-tutorial-phase on the wrapper */
+[data-tutorial-phase="add_piece"] .sb-add,
+[data-tutorial-phase="add_adjacent"] .sb-add,
+[data-tutorial-phase="stack_piece"] .sb-add {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="rotate_piece"] .piece-wrap,
+[data-tutorial-phase="point_piece"] .piece-wrap {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+}
+
+[data-tutorial-phase="point_piece"] .mini-arrow {
+  animation: tut-pulse 1s ease-in-out infinite !important;
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="submit_scene"] [data-tutorial-target="scene-submit-btn"] {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="view_examples"] .thumb {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  cursor: pointer;
+}
+
+[data-tutorial-phase="guess_label"] .btn.good {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  outline: 2px solid #38a169;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="guess_label"] .btn.bad {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  outline: 2px solid #e53e3e;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="guess_rule"] textarea {
+  outline: 2px solid #63b3ed !important;
+  outline-offset: 2px;
+}
+
+[data-tutorial-phase="guess_rule"] [data-tutorial-target="rule-submit-btn"] {
+  animation: tut-pulse 1.3s ease-in-out infinite;
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}

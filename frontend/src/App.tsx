@@ -7,17 +7,24 @@ import RuleInputScreen from "./screens/RuleInputScreen";
 import type { SceneJSON, WSMessage, Label } from "./types";
 import { wsConnect } from "./api";
 import Instructions from "./components/Instructions";
+import TutorialScreen from "./screens/TutorialScreen";
 import GuessingStones from "./components/GuessingStones";
 import PreviousGuesses from "./components/PreviousGuesses";
 import Loading from "./components/Loading";
 import GameOver from "./screens/GameOver";
 import * as actionLog from "./actionLog";
 
+// Set to true to skip the tutorial and go straight to the game after instructions.
+const SKIP_TUTORIAL = true;
+
 // Stable session ID — always a UUID so it's valid even before JATOS initialises.
 // The real JATOS workerId is recorded in the result metadata at submission time.
 const PARTICIPANT_ID = `s_${crypto.randomUUID().slice(0, 8)}`;
 
 export default function App() {
+  // High-level app phase: instructions → tutorial → game
+  const [appPhase, setAppPhase] = useState<"instructions" | "tutorial" | "game">("instructions");
+
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [isStudyComplete, setIsStudyComplete] = useState(false);
   // const [showInstructions, setShowInstructions] = useState(
@@ -417,6 +424,49 @@ export default function App() {
 
   const youWon = gameWinner === playerIndexRef.current;
 
+  // ── Instructions phase ────────────────────────────────────────────────────
+  if (appPhase === "instructions") {
+    return (
+      <div className="container col" style={{ gap: 12, height: "100dvh", overflow: "hidden" }}>
+        <div className="main-content">
+          <Instructions
+            onContinue={() => {
+              localStorage.setItem("zendo_visited", "true");
+              actionLog.setMetadata({
+                consented: true,
+                userAgent: navigator.userAgent,
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+                jatoWorkerId: window.jatos?.workerId,
+              });
+              if (SKIP_TUTORIAL) {
+                setAppPhase("game");
+                startGame();
+              } else {
+                setAppPhase("tutorial");
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tutorial phase ────────────────────────────────────────────────────────
+  if (appPhase === "tutorial") {
+    return (
+      <div className="container col" style={{ gap: 12, height: "100dvh", overflow: "hidden" }}>
+        <TutorialScreen
+          onComplete={() => {
+            setAppPhase("game");
+            startGame();
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ── Game phase (appPhase === "game") ──────────────────────────────────────
   return (
     <div className="container col" style={{ gap: 12, height: "100dvh", overflow: "hidden" }}>
       {step !== 0 && (
@@ -454,23 +504,6 @@ export default function App() {
               <p>You have completed all tasks. Thank you for participating!</p>
             </div>
           </div>
-        )}
-
-        {step === 0 && !isStudyComplete && !loadingInitial && (
-          <Instructions
-            onContinue={() => {
-              localStorage.setItem("zendo_visited", "true");
-              actionLog.setMetadata({
-                consented: true,
-                userAgent: navigator.userAgent,
-                screenWidth: window.screen.width,
-                screenHeight: window.screen.height,
-                jatoWorkerId: window.jatos?.workerId,
-              });
-              // setShowInstructions(false);
-              startGame();
-            }}
-          />
         )}
 
         {step === 0 && !isStudyComplete && loadingInitial && (

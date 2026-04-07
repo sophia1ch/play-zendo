@@ -105,9 +105,10 @@ const PAGES = [
       <>
         <p>
           Zendo is a concept-learning game. There is a{" "}
-          <strong>hidden rule</strong> known only to the game master. Your goal
-          is to figure out what the rule is by building scenes and observing how
-          they are labelled.
+          <strong>hidden rule</strong> known only to the game master.{" "}
+          <strong>Your goal is to identify this rule in as few turns as possible</strong>{" "}
+          by building scenes, observing how they are labelled, and forming
+          hypotheses.
         </p>
 
         <div className="instr-section">
@@ -130,16 +131,14 @@ const PAGES = [
           </ul>
           <p>
             Pieces can also <strong>touch</strong> each other or be{" "}
-            <strong>stacked</strong> on top of one another, and 
-            pieces can <strong>point</strong> toward another piece.
+            <strong>stacked</strong> on top of one another, and pieces can{" "}
+            <strong>point</strong> toward another piece.
           </p>
         </div>
 
         <div className="instr-section">
           <h3 className="instr-section-title">Labels</h3>
-          <p>
-            Every scene gets a label from the game master:
-          </p>
+          <p>Every scene receives a label from the game master:</p>
           <ul className="instr-list">
             <li>
               <strong className="instr-yes">YES</strong> — this scene follows
@@ -152,9 +151,13 @@ const PAGES = [
           </ul>
           <p>
             You start with two example scenes (one YES, one NO) so you can
-            begin forming hypotheses straight away. All examples will be shown in the gallery at the top of the screen for easy comparison.
+            begin forming hypotheses straight away. All labelled scenes are
+            collected in the gallery at the top of the screen for easy
+            comparison.
           </p>
-          <strong>You can click on the images to see a larger view and details about the pieces.</strong>
+          <strong>
+            You can click on any image to see a larger view with piece details.
+          </strong>
         </div>
       </>
     ),
@@ -164,33 +167,45 @@ const PAGES = [
     content: (
       <>
         <div className="instr-section">
-          <h3 className="instr-section-title">Each turn</h3>
+          <h3 className="instr-section-title">Goal</h3>
+          <p>
+            Identify the hidden rule in <strong>as few turns as possible</strong>.
+            Each turn gives you information — use it to narrow down your
+            hypothesis before committing to a rule guess.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="instr-section-title">Each turn has three steps</h3>
           <ol className="instr-list instr-ordered">
             <li>
-              <strong>Build a scene</strong> — drag pieces onto the canvas,
-              choose their shape, colour, and orientation.
+              <strong>Build a scene</strong> — place pieces on the canvas and
+              arrange them however you like. Design scenes that test your
+              current hypothesis.
             </li>
             <li>
-              <strong>Predict the label</strong> — before the game master
-              reveals the answer, guess whether your scene follows the rule
-              (YES or NO). A correct prediction earns you the possibility of guessing the hidden rule.
+              <strong>Guess the label</strong> — before the game master reveals
+              the answer, predict whether your scene follows the rule (YES or
+              NO). A <em>correct</em> prediction earns you one opportunity to
+              guess the hidden rule this turn.
             </li>
             <li>
-              <strong>See the result</strong> — the scene is added to your
-              example gallery at the top of the screen.
+              <strong>Guess the rule (if earned)</strong> — if you predicted
+              the label correctly, you may state the rule in plain language. If
+              your guess is correct you win. If it is wrong, the game master
+              provides a <strong>counter-example</strong> — a new labelled
+              scene that disproves your hypothesis — and play continues with
+              that scene added to the gallery. You can also save your guess for
+              a later turn.
             </li>
           </ol>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Guessing the rule</h3>
+          <h3 className="instr-section-title">Ending the game</h3>
           <p>
-            In case you earned the possibility of guessing the hidden
-            rule, you can input your guess. If your guess is correct, you win. If it is wrong, the
-            game master provides a counter-example and the game continues.
-          </p>
-          <p>
-            The game ends when you guess the rule correctly or after 30 examples have been shown.
+            The game ends when you guess the hidden rule correctly, or after{" "}
+            <strong>30 labelled scenes</strong> have been shown.
           </p>
         </div>
 
@@ -198,13 +213,17 @@ const PAGES = [
           <h3 className="instr-section-title">Tips</h3>
           <ul className="instr-list">
             <li>
-              Use the example gallery at the top to compare YES and NO scenes.
+              Compare YES and NO scenes in the gallery — differences between
+              them reveal clues about the rule.
             </li>
             <li>
-              Try to build scenes that test a specific hypothesis — change only
-              one thing at a time.
+              Build scenes that change <em>one thing at a time</em> to isolate
+              which features matter.
             </li>
-            <li>Previous rule guesses are shown on the left side panel.</li>
+            <li>
+              Your previous rule guesses are listed on screen so you do not
+              repeat them.
+            </li>
           </ul>
         </div>
       </>
@@ -271,7 +290,7 @@ export default function Instructions({ onContinue }: Props) {
             onClick={handleNext}
             disabled={nextDisabled}
           >
-            {isLast ? "I understand — start the study" : "Next"}
+            {isLast ? "I understand — start the tutorial" : "Next"}
           </button>
         </div>
       </div>

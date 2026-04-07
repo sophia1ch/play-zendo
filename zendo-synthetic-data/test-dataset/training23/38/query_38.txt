@@ -1,1 +1,0 @@
-generate_valid_structure([odd_number_of_interaction(cheesecake, pyramid, touching, Structure)], Structure)

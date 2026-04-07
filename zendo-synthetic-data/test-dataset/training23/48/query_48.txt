@@ -1,1 +1,0 @@
-generate_valid_structure([exactly(blue, vertical, 3, Structure)], Structure)

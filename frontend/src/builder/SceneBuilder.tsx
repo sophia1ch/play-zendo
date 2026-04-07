@@ -10,6 +10,8 @@ export type SceneBuilderHandle = {
 
 type Props = { scene: SceneJSON; setScene: (s: SceneJSON) => void };
 
+const MAX_PIECES = 8;
+
 const SHAPES: Shape[] = ["block", "pyramid", "wedge"];
 const COLORS: ColorName[] = ["red", "blue", "yellow"];
 const COLOR_HEX: Record<ColorName, string> = {
@@ -73,8 +75,6 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
 
   const piecePx = Math.max(56, Math.min(110, Math.round(Math.min(canvasW, canvasH) / 7)));
   const floorY = canvasH - piecePx - 10;
-  const OVERLAP = 6;
-  const ADJ_STEP = piecePx - OVERLAP;
   const FAR_SEP = piecePx + 24;
   const SNAP_DIST = 56;
   const STACK_X_TOL = 0.45;
@@ -216,21 +216,43 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
   };
 
   function addPiece() {
-    const center = Math.round((canvasW - piecePx) / 2);
-    const slots: number[] = [center];
-    for (let i = 1; i < 20; i++) {
-      const right = center + i * ADJ_STEP;
-      const left = center - i * ADJ_STEP;
-      if (right <= canvasW - piecePx) slots.push(right);
-      if (left >= 0) slots.push(left);
+    if (scene.pieces.length >= MAX_PIECES) return;
+    const newY = floorY;
+
+    // True bounding-box overlap check for a candidate floor position.
+    // Pieces one stack-level above a floor piece also overlap in y (STACK_OFFSET < piecePx),
+    // so any occupied column is blocked automatically via its base piece.
+    function overlapsAny(testX: number): boolean {
+      return scene.pieces.some((p) => {
+        const xOverlap = testX < p.x + piecePx && p.x < testX + piecePx;
+        const yOverlap = newY < p.y + piecePx && p.y < newY + piecePx;
+        return xOverlap && yOverlap;
+      });
     }
 
-    const floorPieces = scene.pieces.filter((p) => Math.abs(p.y - floorY) <= 2);
-    const taken = new Set(floorPieces.map((p) => Math.round(p.x)));
+    // Build candidate positions in steps of ~half a piece width across the full canvas,
+    // then shuffle for random-feeling placement.
+    const step = Math.max(4, Math.round(piecePx / 4));
+    const candidates: number[] = [];
+    for (let cx = 0; cx <= canvasW - piecePx; cx += step) {
+      candidates.push(cx);
+    }
+    // Fisher-Yates shuffle
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
 
-    const freeX = slots.find((x) => !taken.has(Math.round(x))) ?? center;
-    const x = Math.max(0, Math.min(canvasW - piecePx, freeX));
-    const y = floorY;
+    // Pick first non-overlapping candidate; fall back to pixel-by-pixel scan if needed.
+    let freeX = candidates.find((cx) => !overlapsAny(cx));
+    if (freeX === undefined) {
+      for (let cx = 0; cx <= canvasW - piecePx; cx++) {
+        if (!overlapsAny(cx)) { freeX = cx; break; }
+      }
+    }
+
+    const x = Math.max(0, Math.min(canvasW - piecePx, freeX ?? Math.round((canvasW - piecePx) / 2)));
+    const y = newY;
 
     const piece: Piece = {
       id: crypto.randomUUID(),
@@ -680,22 +702,23 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
 
   useImperativeHandle(ref, () => ({
     async captureScene(): Promise<string> {
-      const canvas = document.createElement("canvas");
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      const ctx = canvas.getContext("2d")!;
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvasW, canvasH);
-
-      // Floor stripe
       const floorTop = floorY + piecePx;
+      const floorBottom = floorTop + 6;
+
+      // Draw full scene onto an offscreen canvas first
+      const full = document.createElement("canvas");
+      full.width = canvasW;
+      full.height = canvasH;
+      const fullCtx = full.getContext("2d")!;
+
+      fullCtx.fillStyle = "#ffffff";
+      fullCtx.fillRect(0, 0, canvasW, canvasH);
+
       for (let x = 0; x < canvasW; x += 16) {
-        ctx.fillStyle = "rgba(0,0,0,0.08)";
-        ctx.fillRect(x, floorTop, 8, 6);
+        fullCtx.fillStyle = "rgba(0,0,0,0.08)";
+        fullCtx.fillRect(x, floorTop, 8, 6);
       }
 
-      // Load all sprites in parallel, then draw in sorted (z) order
       const sortedPieces = [...scene.pieces].sort(
         (a, b) => a.y - b.y || a.x - b.x || a.z - b.z
       );
@@ -713,8 +736,30 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
         )
       );
       for (const { p, img } of loaded) {
-        if (img) ctx.drawImage(img, p.x, p.y, piecePx, piecePx);
+        if (img) fullCtx.drawImage(img, p.x, p.y, piecePx, piecePx);
       }
+
+      // Crop to the bounding box of all pieces + floor stripe + buffer
+      const BUFFER = 10;
+      const cropX = scene.pieces.length
+        ? Math.max(0, Math.min(...scene.pieces.map((p) => p.x)) - BUFFER)
+        : 0;
+      const cropY = scene.pieces.length
+        ? Math.max(0, Math.min(...scene.pieces.map((p) => p.y)) - BUFFER)
+        : 0;
+      const cropRight = scene.pieces.length
+        ? Math.min(canvasW, Math.max(...scene.pieces.map((p) => p.x + piecePx)) + BUFFER)
+        : canvasW;
+      const cropBottom = Math.min(canvasH, floorBottom + BUFFER);
+
+      const cropW = cropRight - cropX;
+      const cropH = cropBottom - cropY;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = cropW;
+      canvas.height = cropH;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(full, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
       return canvas.toDataURL("image/png");
     },
@@ -764,7 +809,12 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
             </div>
           </div>
 
-          <button className="sb-add" onClick={addPiece}>
+          <button
+            className="sb-add"
+            onClick={addPiece}
+            disabled={scene.pieces.length >= MAX_PIECES}
+            title={scene.pieces.length >= MAX_PIECES ? "Maximum of 8 pieces reached" : undefined}
+          >
             + Add
           </button>
         </aside>
@@ -812,6 +862,7 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
             <li><strong>Pointing:</strong> flat blocks/pyramids and cheesecake/doorstop wedges show a <strong>→</strong> on hover — drag it to another piece.</li>
           </ul>
           <p className="sb-info-note">Build scenes that could exist in the <strong>real world</strong>: no floating pieces or unstable shapes unless clearly supported.</p>
+          <p className="sb-info-note">You can add a <strong>maximum of 8 pieces</strong> per scene.</p>
         </aside>
 
       </div>

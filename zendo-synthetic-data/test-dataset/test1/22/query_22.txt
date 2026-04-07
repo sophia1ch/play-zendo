@@ -1,1 +1,0 @@
-generate_valid_structure([exactly(doorstop, grounded, 3, Structure)], Structure)

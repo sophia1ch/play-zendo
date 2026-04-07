@@ -2,9 +2,11 @@ import "./GuessingStones.css";
 type Props = {
   yours: number;
   others?: number;
+  /** Optional note shown below the counter (e.g. for tutorial context). */
+  note?: string;
 };
 
-export default function GuessingStones({ yours, others }: Props) {
+export default function GuessingStones({ yours, others, note }: Props) {
   console.log("others", others);
   return (
     <div className="stones card">
@@ -23,6 +25,11 @@ export default function GuessingStones({ yours, others }: Props) {
             <div key={i} className="dot" />
           ))}
         </div>
+      )}
+      {note && (
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#718096", lineHeight: 1.4 }}>
+          {note}
+        </p>
       )}
     </div>
   );

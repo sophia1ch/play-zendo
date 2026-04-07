@@ -1,1 +1,0 @@
-generate_valid_structure([even_number_of_interaction(flat, upside_down, touching, Structure)], Structure)

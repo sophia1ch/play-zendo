@@ -6,9 +6,11 @@ type Props = {
   scene: SceneJSON;
   setScene: (s: SceneJSON) => void;
   onSubmit: (s: SceneJSON, imageDataUrl: string) => void;
+  /** When true the Submit button is disabled (used during tutorial phases). */
+  submitDisabled?: boolean;
 };
 
-export default function BuildSceneScreen({ scene, setScene, onSubmit }: Props) {
+export default function BuildSceneScreen({ scene, setScene, onSubmit, submitDisabled }: Props) {
   const builderRef = useRef<SceneBuilderHandle>(null);
   const [capturing, setCapturing] = useState(false);
 
@@ -30,9 +32,10 @@ export default function BuildSceneScreen({ scene, setScene, onSubmit }: Props) {
       <div className="row" style={{ justifyContent: "center", flexShrink: 0 }}>
         <button
           className="btn primary"
+          data-tutorial-target="scene-submit-btn"
           style={{ width: "25%", alignSelf: "center" }}
           onClick={handleSubmit}
-          disabled={scene.pieces.length === 0 || capturing}
+          disabled={scene.pieces.length === 0 || capturing || (submitDisabled ?? false)}
         >
           {capturing ? "Preparing…" : "Submit"}
         </button>

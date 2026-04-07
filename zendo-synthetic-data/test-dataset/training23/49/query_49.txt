@@ -1,1 +1,0 @@
-generate_valid_structure([exactly(cheesecake, wedge, 3, Structure)], Structure)

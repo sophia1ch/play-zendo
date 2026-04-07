@@ -1,0 +1,143 @@
+.tutorial-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 8px;
+}
+
+/* ── Banner ───────────────────────────────────────────────────────────── */
+.tutorial-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2c5282;
+  flex-shrink: 0;
+}
+
+.tutorial-badge {
+  background: #3182ce;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.tutorial-progress {
+  margin-left: auto;
+  font-size: 12px;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+/* ── Main content area ────────────────────────────────────────────────── */
+.tutorial-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Skip row ─────────────────────────────────────────────────────────── */
+.tutorial-skip-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px 0;
+  flex-shrink: 0;
+}
+
+.tutorial-skip-btn {
+  background: none;
+  border: none;
+  color: #718096;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.tutorial-skip-btn:hover {
+  color: #4a5568;
+}
+
+/* ── View examples phase ─────────────────────────────────────────────── */
+.tutorial-view-examples {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* ── Finished screen ──────────────────────────────────────────────────── */
+.tutorial-finished-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.tutorial-finished-card {
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  padding: 40px 48px;
+  max-width: 480px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.tutorial-finished-checkmark {
+  width: 64px;
+  height: 64px;
+  background: #c6f6d5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #276749;
+  margin: 0 auto 20px;
+}
+
+.tutorial-finished-card h2 {
+  font-size: clamp(20px, 2.5vw, 26px);
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text, #1a202c);
+}
+
+.tutorial-finished-card p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4a5568;
+  margin: 0 0 24px;
+}
+
+/* ── Guess rule phase ─────────────────────────────────────────────────── */
+.tutorial-rule-hint {
+  background: #e8f0fe;
+  border: 1px solid #a8c7fa;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  flex-shrink: 0;
+}

@@ -1,0 +1,25 @@
+# Not needed in the image
+frontend/
+zendo-synthetic-data/.DS_Store
+
+# zendo-model exclusions
+zendo-model/__pycache__
+zendo-model/**/__pycache__
+zendo-model/*.pyc
+zendo-model/.DS_Store
+zendo-model/.git
+
+# Runtime output — use Docker volumes for these
+zendo-model/gamestates/
+zendo-model/generation/output/
+zendo-model/cached_states/
+zendo-model/prompt_logs/
+zendo-model/training_logs/
+zendo-model/blender_render.log
+
+# Heavy research/analysis dirs not needed at runtime
+zendo-model/analysis/
+
+# API keys — never bake into the image
+zendo-model/models/gpt/open-ai-key-vlp-aiml
+zendo-model/models/gpt/open-ai-key-vlp
