@@ -4,7 +4,8 @@ FROM nvcr.io/nvidia/pytorch:24.03-py3
 RUN apt-get update && \
     apt-get install -y \
       libxxf86vm1 libx11-6 libxi6 libxfixes3 libxrandr2 \
-      libxrender1 libxt6 xvfb swi-prolog git wget && \
+      libxrender1 libxt6 xvfb swi-prolog git wget \
+      libxkbcommon0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Blender (headless)
