@@ -33,7 +33,7 @@ ENV PATH=/opt/conda/envs/zendo-model/bin:$PATH
 
 # Copy application code and synthetic data
 COPY zendo-model/ /workspace/zendo-model/
-COPY zendo-synthetic-data/ /workspace/zendo-model/zendo-synthetic-data/
+COPY zendo-synthetic-data/ /workspace/zendo-synthetic-data/
 
 WORKDIR /workspace/zendo-model
 
@@ -43,9 +43,3 @@ RUN mkdir -p gamestates/gamestates_study_test \
              generation/output \
              cached_states
 
-EXPOSE 8000
-
-# Start Xvfb (needed for Blender headless rendering), then run the server
-CMD Xvfb :99 -screen 0 1024x768x24 -nolisten tcp & \
-    export DISPLAY=:99 && \
-    uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
