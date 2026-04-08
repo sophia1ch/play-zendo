@@ -41,7 +41,16 @@ const POINTING_SPRITE_ROTATION: Record<string, number> = {
   block_flat: 350,
   pyramid_flat: 30,
   wedge_cheesecake: 30,
-  wedge_doorstop: 350, 
+  wedge_doorstop: 350,
+};
+
+// The horizontal direction each piece naturally points after rotation is applied.
+// Used to decide when to mirror the sprite so it faces the actual target.
+const POINTING_NATURAL_DIR: Record<string, "right" | "left"> = {
+  block_flat: "right",
+  wedge_doorstop: "right",
+  pyramid_flat: "left",
+  wedge_cheesecake: "left",
 };
 
 const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder({ scene, setScene }, ref) {
@@ -615,11 +624,38 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
       p.pointing != null || (isArrowSource && arrowDragHoverTarget != null);
     const spriteRotDeg = showRotation ? (POINTING_SPRITE_ROTATION[rotKey] ?? 0) : 0;
 
+    // Mirror the sprite horizontally when the target is on the opposite side
+    // from the direction the piece naturally points after rotation.
+    let shouldMirror = false;
+    if (showRotation) {
+      const naturalDir = POINTING_NATURAL_DIR[rotKey];
+      if (naturalDir) {
+        let targetX: number | null = null;
+        if (p.pointing != null) {
+          const target = scene.pieces.find((q) => q.id === p.pointing);
+          if (target) targetX = target.x;
+        } else if (isArrowSource) {
+          if (arrowDragHoverTarget != null) {
+            const target = scene.pieces.find((q) => q.id === arrowDragHoverTarget);
+            if (target) targetX = target.x;
+          } else if (arrowDragCursor) {
+            targetX = arrowDragCursor.x;
+          }
+        }
+        if (targetX !== null) {
+          const targetIsLeft = targetX < p.x;
+          shouldMirror =
+            (naturalDir === "right" && targetIsLeft) ||
+            (naturalDir === "left" && !targetIsLeft);
+        }
+      }
+    }
+
     const imgStyle: React.CSSProperties = {
       width: "100%",
       height: "100%",
       objectFit: "contain",
-      transform: `scale(1.15) rotate(${spriteRotDeg}deg)`,
+      transform: `scale(${shouldMirror ? -1.15 : 1.15}, 1.15) rotate(${spriteRotDeg}deg)`,
       pointerEvents: "none",
     };
 
@@ -703,24 +739,15 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
   useImperativeHandle(ref, () => ({
     async captureScene(): Promise<string> {
       const floorTop = floorY + piecePx;
-      const floorBottom = floorTop + 6;
 
-      // Draw full scene onto an offscreen canvas first
+      // Draw pieces onto an offscreen canvas
       const full = document.createElement("canvas");
       full.width = canvasW;
       full.height = canvasH;
       const fullCtx = full.getContext("2d")!;
 
-      fullCtx.fillStyle = "#ffffff";
-      fullCtx.fillRect(0, 0, canvasW, canvasH);
-
-      for (let x = 0; x < canvasW; x += 16) {
-        fullCtx.fillStyle = "rgba(0,0,0,0.08)";
-        fullCtx.fillRect(x, floorTop, 8, 6);
-      }
-
       const sortedPieces = [...scene.pieces].sort(
-        (a, b) => a.y - b.y || a.x - b.x || a.z - b.z
+        (a, b) => a.z - b.z || a.y - b.y || a.x - b.x
       );
       const loaded = await Promise.all(
         sortedPieces.map(
@@ -735,11 +762,14 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
             })
         )
       );
+      const SCALE = 1.15;
+      const scaledPx = piecePx * SCALE;
+      const scaleOffset = (scaledPx - piecePx) / 2;
       for (const { p, img } of loaded) {
-        if (img) fullCtx.drawImage(img, p.x, p.y, piecePx, piecePx);
+        if (img) fullCtx.drawImage(img, p.x - scaleOffset, p.y - scaleOffset, scaledPx, scaledPx);
       }
 
-      // Crop to the bounding box of all pieces + floor stripe + buffer
+      // Bounding box of pieces content (without floor)
       const BUFFER = 10;
       const cropX = scene.pieces.length
         ? Math.max(0, Math.min(...scene.pieces.map((p) => p.x)) - BUFFER)
@@ -750,16 +780,34 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
       const cropRight = scene.pieces.length
         ? Math.min(canvasW, Math.max(...scene.pieces.map((p) => p.x + piecePx)) + BUFFER)
         : canvasW;
-      const cropBottom = Math.min(canvasH, floorBottom + BUFFER);
-
+      const cropBottom = floorTop; // exclude floor — drawn separately below
       const cropW = cropRight - cropX;
       const cropH = cropBottom - cropY;
 
+      // Compose final 640×480 image
+      const OUT_W = 640;
+      const OUT_H = 480;
+      const TARGET_FLOOR_Y = 390; // floor position in the output image
+
       const canvas = document.createElement("canvas");
-      canvas.width = cropW;
-      canvas.height = cropH;
+      canvas.width = OUT_W;
+      canvas.height = OUT_H;
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(full, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+      // Background
+      ctx.fillStyle = "#d8d8d8";
+      ctx.fillRect(0, 0, OUT_W, OUT_H);
+
+      // Floor stripe across the full width
+      for (let x = 0; x < OUT_W; x += 16) {
+        ctx.fillStyle = "rgba(0,0,0,0.08)";
+        ctx.fillRect(x, TARGET_FLOOR_Y, 8, 6);
+      }
+
+      // Paste pieces centered horizontally, floor-aligned vertically
+      const destX = Math.round((OUT_W - cropW) / 2);
+      const destY = TARGET_FLOOR_Y - (floorTop - cropY);
+      ctx.drawImage(full, cropX, cropY, cropW, cropH, destX, destY, cropW, cropH);
 
       return canvas.toDataURL("image/png");
     },
