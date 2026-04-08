@@ -30,8 +30,8 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
 
 # Create conda environment
 WORKDIR /workspace
-COPY zendo-model/environment_cpu.yml .
-RUN conda env create -n zendo-model -f environment_cpu.yml && conda clean --all -y
+COPY zendo-model/environment_fixed.yml .
+RUN conda env create -n zendo-model -f environment_fixed.yml && conda clean --all -y
 
 # Put the zendo-model env on PATH so it's used by default (no conda run needed)
 ENV PATH=/opt/conda/envs/zendo-model/bin:$PATH
