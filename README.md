@@ -4,7 +4,7 @@ Repository holds backend and frontend to play Zendo against the zendo-model
 ## Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/sophia1ch/play-zendo.git
 cd play-zendo
 git submodule update --init --recursive
 ```
@@ -16,7 +16,7 @@ The Docker image contains Blender, SWI-Prolog, and the conda environment. Code a
 ### Build the image
 
 ```bash
-docker build -t play-zendo .
+docker build -t zendo-docker:latest .
 ```
 
 ### Smoke test
@@ -27,7 +27,7 @@ Verifies imports, loads the dataset, and renders a test scene via Blender:
 docker run --rm \
   -v "$(pwd)/zendo-model:/workspace/zendo-model" \
   -v "$(pwd)/zendo-synthetic-data:/workspace/zendo-synthetic-data" \
-  play-zendo \
+  zendo-docker:latest \
   python smoke_test.py
 ```
 
@@ -39,7 +39,7 @@ docker run \
   -v "$(pwd)/zendo-synthetic-data:/workspace/zendo-synthetic-data" \
   -p 8000:8000 \
   -e PYTHONHASHSEED=0 \
-  play-zendo \
+  zendo-docker:latest \
   uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
