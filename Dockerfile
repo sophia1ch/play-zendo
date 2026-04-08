@@ -1,4 +1,6 @@
-FROM nvcr.io/nvidia/pytorch:24.03-py3
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 # System dependencies: X libs for Blender headless, SWI-Prolog, Xvfb
 RUN apt-get update && \
@@ -8,11 +10,13 @@ RUN apt-get update && \
       libxkbcommon0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Blender (headless)
+# Blender (headless) + install pyyaml into Blender's bundled Python
 RUN wget -q https://download.blender.org/release/Blender4.4/blender-4.4.0-linux-x64.tar.xz && \
     tar -xf blender-4.4.0-linux-x64.tar.xz -C /usr/local/ && \
     ln -s /usr/local/blender-4.4.0-linux-x64/blender /usr/local/bin/blender && \
-    rm blender-4.4.0-linux-x64.tar.xz
+    rm blender-4.4.0-linux-x64.tar.xz && \
+    /usr/local/blender-4.4.0-linux-x64/4.4/python/bin/python3.11 -m ensurepip && \
+    /usr/local/blender-4.4.0-linux-x64/4.4/python/bin/python3.11 -m pip install pyyaml torch numpy pillow
 
 # Miniconda
 RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
@@ -26,8 +30,8 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
 
 # Create conda environment
 WORKDIR /workspace
-COPY zendo-model/environment_fixed.yml .
-RUN conda env create -n zendo-model -f environment_fixed.yml && conda clean --all -y
+COPY zendo-model/environment_cpu.yml .
+RUN conda env create -n zendo-model -f environment_cpu.yml && conda clean --all -y
 
 # Put the zendo-model env on PATH so it's used by default (no conda run needed)
 ENV PATH=/opt/conda/envs/zendo-model/bin:$PATH
