@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -18,33 +18,9 @@ RUN wget -q https://download.blender.org/release/Blender4.4/blender-4.4.0-linux-
     /usr/local/blender-4.4.0-linux-x64/4.4/python/bin/python3.11 -m ensurepip && \
     /usr/local/blender-4.4.0-linux-x64/4.4/python/bin/python3.11 -m pip install pyyaml torch numpy pillow
 
-# Miniconda
-RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
-    bash /tmp/miniconda.sh -b -p /opt/conda && \
-    rm /tmp/miniconda.sh
-ENV PATH=/opt/conda/bin:$PATH
-
-# Accept Anaconda ToS for default channels
-RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-
-# Create conda environment
+# Python dependencies
 WORKDIR /workspace
-COPY zendo-model/environment_fixed.yml .
-RUN conda env create -n zendo-model -f environment_fixed.yml && conda clean --all -y
-
-# Put the zendo-model env on PATH so it's used by default (no conda run needed)
-ENV PATH=/opt/conda/envs/zendo-model/bin:$PATH
-
-# Copy application code and synthetic data
-COPY zendo-model/ /workspace/zendo-model/
-COPY zendo-synthetic-data/ /workspace/zendo-synthetic-data/
+COPY zendo-model/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 WORKDIR /workspace/zendo-model
-
-# Create writable runtime directories
-RUN mkdir -p gamestates/gamestates_study_test \
-             gamestates/gamestates_human \
-             generation/output \
-             cached_states
-
