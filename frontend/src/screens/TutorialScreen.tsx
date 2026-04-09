@@ -4,26 +4,26 @@ import GuessLabelScreen from "./GuessLabelScreen";
 import TopStrip from "../components/TopStrip";
 import GuessingStones from "../components/GuessingStones";
 import PreviousGuesses from "../components/PreviousGuesses";
+import PlayerNotes from "../components/PlayerNotes";
 import TutorialTooltip from "../components/TutorialTooltip";
-import type { Piece, SceneJSON } from "../types";
+import type { SceneJSON } from "../types";
 import "../styles/TutorialScreen.css";
 import "../styles/TutorialTooltip.css";
 
 // ── Tutorial images (imported so Vite resolves hashed asset URLs) ─────────────
-import tutYes1 from "../assets/item_blue_block_flat.png";
-import tutYes2 from "../assets/item_blue_block_upright.png";
-import tutNo1 from "../assets/item_red_block_upside_down.png";
-import tutNo2 from "../assets/item_yellow_pyramid_upright.png";
+import tutYes1 from "../assets/positive_example.png";
+import tutYes2 from "../assets/positive_example_2.png";
+import tutNo1 from "../assets/negative_example.png";
 
 const TUTORIAL_YES: string[] = [tutYes1, tutYes2];
-const TUTORIAL_NO: string[] = [tutNo1, tutNo2];
+const TUTORIAL_NO: string[] = [tutNo1];
 
 // ── Phase types ───────────────────────────────────────────────────────────────
 type Phase =
-  | "add_piece"
-  | "rotate_piece"
-  | "add_adjacent"
-  | "stack_piece"
+  | "add_pieces"
+  | "rotate_flat"
+  | "drag_adjacent"
+  | "add_and_stack"
   | "point_piece"
   | "submit_scene"
   | "view_examples"
@@ -33,10 +33,10 @@ type Phase =
   | "finished";
 
 const PHASES: Phase[] = [
-  "add_piece",
-  "rotate_piece",
-  "add_adjacent",
-  "stack_piece",
+  "add_pieces",
+  "rotate_flat",
+  "drag_adjacent",
+  "add_and_stack",
   "point_piece",
   "submit_scene",
   "view_examples",
@@ -53,33 +53,33 @@ interface TooltipConfig {
 }
 
 const TOOLTIPS: Record<Phase, TooltipConfig | null> = {
-  add_piece: {
+  add_pieces: {
     message:
-      "Choose a shape and color in the left panel, then click + Add to place your first piece on the canvas.",
+      "Add 3 pieces to the scene using the panel on the left. Click + Add or drag the preview directly into the scene.",
     targetSelector: ".sb-add",
     arrowDir: "up",
   },
-  rotate_piece: {
+  rotate_flat: {
     message:
-      "Click on the piece (without dragging) to cycle through its orientations — upright, flat, upside-down, etc.",
+      "Click one of the pieces (without dragging) to cycle its orientation until it becomes flat.",
     targetSelector: ".piece-wrap",
     arrowDir: "down",
   },
-  add_adjacent: {
+  drag_adjacent: {
     message:
-      "Add a second piece and drag it close to the first one. When they are near each other they snap together!",
-    targetSelector: ".sb-add",
-    arrowDir: "up",
+      "Drag one of the upright pieces close to the other upright piece — they will snap together when near enough.",
+    targetSelector: ".piece-wrap",
+    arrowDir: "down",
   },
-  stack_piece: {
+  add_and_stack: {
     message:
-      "Add another piece and drop it directly above an existing piece — it will stack on top of it.",
+      "Select blue in the color panel, add a new piece, then drag it on top of one of the upright pieces to stack it.",
     targetSelector: ".sb-add",
     arrowDir: "up",
   },
   point_piece: {
     message:
-      "Click a floor piece until you see a → button (needs flat, cheesecake, or doorstop orientation). Then drag → to another piece to set 'pointing'.",
+      "Drag the → button of the flat piece to point at another piece.",
     targetSelector: ".piece-wrap",
     arrowDir: "down",
   },
@@ -96,14 +96,14 @@ const TOOLTIPS: Record<Phase, TooltipConfig | null> = {
   },
   guess_label: {
     message:
-      "Does this scene follow the hidden rule? Click 'Rule Following' for YES or 'Not Rule Following' for NO.",
+      "In the tutorial the correct label is shown for you. In the real game you would have to guess — click the highlighted button to continue.",
     targetSelector: ".btn.good",
     arrowDir: "down",
   },
   guess_rule: {
     message:
       "Type your guess for the hidden rule, e.g. \"There is at least one red block\". Then click Submit — or skip.",
-    targetSelector: "textarea",
+    targetSelector: ".tutorial-rule-hint",
     arrowDir: "down",
   },
   counterexample_note: null,
@@ -111,10 +111,10 @@ const TOOLTIPS: Record<Phase, TooltipConfig | null> = {
 };
 
 const SCENE_PHASES: Phase[] = [
-  "add_piece",
-  "rotate_piece",
-  "add_adjacent",
-  "stack_piece",
+  "add_pieces",
+  "rotate_flat",
+  "drag_adjacent",
+  "add_and_stack",
   "point_piece",
   "submit_scene",
 ];
@@ -122,16 +122,19 @@ const SCENE_PHASES: Phase[] = [
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
   onComplete: () => void;
+  notes: string;
+  onNotesChange: (notes: string) => void;
 }
 
-export default function TutorialScreen({ onComplete }: Props) {
-  const [phase, setPhase] = useState<Phase>("add_piece");
+export default function TutorialScreen({ onComplete, notes, onNotesChange }: Props) {
+  const [phase, setPhase] = useState<Phase>("add_pieces");
   const [scene, setScene] = useState<SceneJSON>({
     id: crypto.randomUUID(),
     size: 320,
     pieces: [],
   });
   const [capturedSceneImage, setCapturedSceneImage] = useState<string | null>(null);
+  const [correctLabel, setCorrectLabel] = useState<"YES" | "NO" | null>(null);
   const [posImages, setPosImages] = useState<string[]>(TUTORIAL_YES);
   const [negImages, setNegImages] = useState<string[]>(TUTORIAL_NO);
   const [allowedGuesses, setAllowedGuesses] = useState(0);
@@ -139,9 +142,8 @@ export default function TutorialScreen({ onComplete }: Props) {
   const [exampleViewed, setExampleViewed] = useState(false);
   const [ruleText, setRuleText] = useState("");
 
-  // Keep refs in sync so the scene-watching effect has stable access
-  const prevPiecesRef = useRef<Piece[]>([]);
-  const phaseRef = useRef<Phase>("add_piece");
+  // Keep ref in sync so the scene-watching effect has stable access
+  const phaseRef = useRef<Phase>("add_pieces");
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -149,39 +151,48 @@ export default function TutorialScreen({ onComplete }: Props) {
 
   // ── Auto-advance scene-building phases based on scene changes ──────────────
   useEffect(() => {
-    const prevPieces = prevPiecesRef.current;
     const p = phaseRef.current;
 
-    if (p === "add_piece" && scene.pieces.length >= 1) {
-      setPhase("rotate_piece");
-    } else if (p === "rotate_piece") {
-      // Detect any piece whose orientation changed compared to previous render
-      const changed = scene.pieces.some((piece) => {
-        const prev = prevPieces.find((pp) => pp.id === piece.id);
-        return prev !== undefined && prev.orientation !== piece.orientation;
+    if (p === "add_pieces") {
+      if (scene.pieces.length >= 3) setPhase("rotate_flat");
+
+    } else if (p === "rotate_flat") {
+      const hasFlat = scene.pieces.some(
+        (piece) =>
+          piece.orientation === "flat" ||
+          piece.orientation === "cheesecake" ||
+          piece.orientation === "doorstop"
+      );
+      if (hasFlat) setPhase("drag_adjacent");
+
+    } else if (p === "drag_adjacent") {
+      const hasAdjacentUprights = scene.pieces.some((piece) => {
+        if (piece.orientation !== "upright") return false;
+        const leftNeighbor = scene.pieces.find((o) => o.id === piece.touchingLeft);
+        const rightNeighbor = scene.pieces.find((o) => o.id === piece.touchingRight);
+        return leftNeighbor?.orientation === "upright" || rightNeighbor?.orientation === "upright";
       });
-      if (changed) setPhase("add_adjacent");
-    } else if (p === "add_adjacent") {
-      const hasAdjacent = scene.pieces.some(
-        (piece) => piece.touchingLeft !== null || piece.touchingRight !== null
+      if (hasAdjacentUprights) setPhase("add_and_stack");
+
+    } else if (p === "add_and_stack") {
+      // Blue piece stacked on top of another piece (onTop = the piece it sits on)
+      const hasBlueStacked = scene.pieces.some(
+        (piece) => piece.color === "blue" && piece.onTop !== null
       );
-      if (scene.pieces.length >= 2 && hasAdjacent) setPhase("stack_piece");
-    } else if (p === "stack_piece") {
-      const hasStack = scene.pieces.some(
-        (piece) => piece.onTop !== null || piece.below !== null
-      );
-      if (hasStack) setPhase("point_piece");
+      if (hasBlueStacked) setPhase("point_piece");
+
     } else if (p === "point_piece") {
       const hasPointing = scene.pieces.some((piece) => piece.pointing !== null);
       if (hasPointing) setPhase("submit_scene");
     }
-
-    prevPiecesRef.current = [...scene.pieces];
   }, [scene]);
 
   // ── Event handlers ─────────────────────────────────────────────────────────
   function handleSceneSubmit(_scene: SceneJSON, imageDataUrl: string) {
     if (phaseRef.current === "submit_scene") {
+      // Tutorial rule: exactly one piece with cheesecake orientation
+      const cheesecakeCount = _scene.pieces.filter((p) => p.orientation === "cheesecake").length;
+      setCorrectLabel(cheesecakeCount === 1 ? "YES" : "NO");
       setCapturedSceneImage(imageDataUrl);
       setPhase("view_examples");
     }
@@ -209,8 +220,10 @@ export default function TutorialScreen({ onComplete }: Props) {
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
-  const tooltipConfig = TOOLTIPS[phase];
   const isScenePhase = SCENE_PHASES.includes(phase);
+  const rawTooltipConfig = (phase === "view_examples" && exampleViewed) ? null : TOOLTIPS[phase];
+  // For scene phases the message is rendered inline below the canvas; no floating tooltip needed
+  const tooltipConfig = isScenePhase ? null : rawTooltipConfig;
   const stepNumber = PHASES.indexOf(phase) + 1;
   const totalSteps = PHASES.length;
 
@@ -309,6 +322,13 @@ export default function TutorialScreen({ onComplete }: Props) {
             note="Incorrect rule guesses appear here so you can refine your hypothesis over time."
           />
         </div>
+        <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+          <PlayerNotes
+            notes={notes}
+            onChange={onNotesChange}
+            hint="You are allowed to make notes if needed."
+          />
+        </div>
       </div>
 
       {/* ── Phase-specific main content ── */}
@@ -323,6 +343,8 @@ export default function TutorialScreen({ onComplete }: Props) {
                 setScene={setScene}
                 onSubmit={handleSceneSubmit}
                 submitDisabled={phase !== "submit_scene"}
+                tutorialNote={rawTooltipConfig?.message}
+                tutorialNoteOnCanvas={phase === "submit_scene"}
               />
             </div>
             {/* Skip only for the tricky pointing step */}
@@ -347,9 +369,13 @@ export default function TutorialScreen({ onComplete }: Props) {
               <strong style={{ color: "green" }}>YES</strong> (rule following)
               and <strong style={{ color: "red" }}>NO</strong> (not rule
               following). Use these to form hypotheses about the hidden rule.
-              <br />
-              <br />
-              Click any image to enlarge it.
+              {!exampleViewed && (
+                <>
+                  <br />
+                  <br />
+                  Click any image to enlarge it.
+                </>
+              )}
             </p>
             {exampleViewed ? (
               <button
@@ -371,6 +397,7 @@ export default function TutorialScreen({ onComplete }: Props) {
           <GuessLabelScreen
             image={capturedSceneImage ?? undefined}
             onGuess={handleGuessLabel}
+            correctLabel={correctLabel ?? undefined}
           />
         )}
 
@@ -444,13 +471,12 @@ export default function TutorialScreen({ onComplete }: Props) {
               </div>
             </div>
 
-            {/* Tutorial-specific note */}
-            <div className="tutorial-rule-hint" style={{ flexShrink: 0 }}>
-              In the tutorial there is no correct answer — just give it a try!
-              You can also skip if you are unsure.
-            </div>
-
             <div className="panel" style={{ padding: 8, flexShrink: 0 }}>
+              {/* Tutorial-specific note — above the input so the tooltip anchors here */}
+              <div className="tutorial-rule-hint" style={{ marginBottom: 8 }}>
+                The tutorial has a hidden rule — try to figure it out from the example scenes and the label you just confirmed!
+                You can also skip if you are unsure.
+              </div>
               <div className="section-title" style={{ marginBottom: 6 }}>
                 Your rule guess
               </div>

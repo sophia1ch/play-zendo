@@ -10,12 +10,13 @@ import Instructions from "./components/Instructions";
 import TutorialScreen from "./screens/TutorialScreen";
 import GuessingStones from "./components/GuessingStones";
 import PreviousGuesses from "./components/PreviousGuesses";
+import PlayerNotes from "./components/PlayerNotes";
 import Loading from "./components/Loading";
 import GameOver from "./screens/GameOver";
 import * as actionLog from "./actionLog";
 
 // Set to true to skip the tutorial and go straight to the game after instructions.
-const SKIP_TUTORIAL = true;
+const SKIP_TUTORIAL = false;
 
 // Stable session ID — always a UUID so it's valid even before JATOS initialises.
 // The real JATOS workerId is recorded in the result metadata at submission time.
@@ -45,6 +46,7 @@ export default function App() {
 
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [previousRules, setPreviousRules] = useState<string[]>([]);
+  const [playerNotes, setPlayerNotes] = useState("");
 
   const [yourStones, setYourStones] = useState(0);
   const [otherPlayersStones, setOtherPlayersStones] = useState<number | null>(null);
@@ -457,6 +459,8 @@ export default function App() {
     return (
       <div className="container col" style={{ gap: 12, height: "100dvh", overflow: "hidden" }}>
         <TutorialScreen
+          notes={playerNotes}
+          onNotesChange={setPlayerNotes}
           onComplete={() => {
             setAppPhase("game");
             startGame();
@@ -485,6 +489,9 @@ export default function App() {
             </div>
             <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
               <PreviousGuesses rules={previousRules} />
+            </div>
+            <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+              <PlayerNotes notes={playerNotes} onChange={setPlayerNotes} />
             </div>
           </div>
         </>

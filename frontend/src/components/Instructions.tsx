@@ -49,6 +49,11 @@ const PAGES = [
               Non‑identifying technical information (e.g., browser, screen size)
               used only for data quality control.
             </li>
+            <li>
+              You may use the <strong>notes field</strong> during the game to
+              write down observations. <strong>Notes are not collected</strong>{" "}
+              and remain private to you.
+            </li>
           </ul>
           <p>
             All data is linked only to a <strong>participant ID</strong> and not
@@ -103,14 +108,14 @@ const PAGES = [
     title: "The Game: Zendo",
     content: (
       <>
-        <p>
-          Zendo is a concept-learning game. There is a{" "}
-          <strong>hidden rule</strong> known only to the game master.{" "}
-          <strong>Your goal is to identify this rule in as few turns as possible</strong>{" "}
-          by building scenes, observing how they are labelled, and forming
-          hypotheses.
-        </p>
-
+        <div className="instr-section">
+          <h3 className="instr-section-title">Goal</h3>
+          <p>
+            Identify a hidden rule in <strong>as few turns as possible</strong>.
+            Each turn gives you information: use it to narrow down your
+            hypothesis before committing to a rule guess.
+          </p>
+        </div>
         <div className="instr-section">
           <h3 className="instr-section-title">Pieces</h3>
           <p>
@@ -137,64 +142,28 @@ const PAGES = [
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Labels</h3>
-          <p>Every scene receives a label from the game master:</p>
-          <ul className="instr-list">
-            <li>
-              <strong className="instr-yes">YES</strong> — this scene follows
-              the hidden rule
-            </li>
-            <li>
-              <strong className="instr-no">NO</strong> — this scene does not
-              follow the hidden rule
-            </li>
-          </ul>
+          <h3 className="instr-section-title">Start of the Game</h3>
           <p>
-            You start with two example scenes (one YES, one NO) so you can
-            begin forming hypotheses straight away. All labelled scenes are
-            collected in the gallery at the top of the screen for easy
-            comparison.
+            At the start of the game, you get one scene that follows the hidden rule, and one that does not. These are your first clues about the rule.
           </p>
-          <strong>
-            You can click on any image to see a larger view with piece details.
-          </strong>
-        </div>
-      </>
-    ),
-  },
-  {
-    title: "How to Play",
-    content: (
-      <>
-        <div className="instr-section">
-          <h3 className="instr-section-title">Goal</h3>
-          <p>
-            Identify the hidden rule in <strong>as few turns as possible</strong>.
-            Each turn gives you information — use it to narrow down your
-            hypothesis before committing to a rule guess.
-          </p>
-        </div>
-
-        <div className="instr-section">
           <h3 className="instr-section-title">Each turn has three steps</h3>
           <ol className="instr-list instr-ordered">
             <li>
-              <strong>Build a scene</strong> — place pieces on the canvas and
+              <strong>Build a scene</strong>: place pieces on the canvas and
               arrange them however you like. Design scenes that test your
               current hypothesis.
             </li>
             <li>
-              <strong>Guess the label</strong> — before the game master reveals
-              the answer, predict whether your scene follows the rule (YES or
-              NO). A <em>correct</em> prediction earns you one opportunity to
-              guess the hidden rule this turn.
+              <strong>Guess the label</strong>: After building a scene you should guess whether the scene follows the hidden rule (YES or NO).
+              A <em>correct</em> prediction earns you one opportunity to
+              guess the hidden rule this turn. The amount of allowed guesses you have, is displayed under "Allowed Guesses" on the left.
             </li>
             <li>
-              <strong>Guess the rule (if earned)</strong> — if you predicted
+              <strong>Guess the rule (if earned)</strong>: if you predicted
               the label correctly, you may state the rule in plain language. If
               your guess is correct you win. If it is wrong, the game master
-              provides a <strong>counter-example</strong> — a new labelled
-              scene that disproves your hypothesis — and play continues with
+              provides a <strong>counter-example</strong> (a new labelled
+              scene that disproves your hypothesis) and play continues with
               that scene added to the gallery. You can also save your guess for
               a later turn.
             </li>
@@ -221,8 +190,7 @@ const PAGES = [
               which features matter.
             </li>
             <li>
-              Your previous rule guesses are listed on screen so you do not
-              repeat them.
+              Your previous rule guesses are listed on screen to help you keep track of what you have already considered.
             </li>
           </ul>
         </div>

@@ -109,8 +109,13 @@ export default function RuleInputScreen({ onSubmit }: RuleInputProps) {
           >
             Submit
           </button>
-          <button className="btn" style={{ flex: 1 }} onClick={handleClear}>
-            Clear
+          <button className="btn" style={{ flex: 1 }} onClick={
+              () => {
+                handleClear();
+                handleSubmit();
+              }
+            }>
+            Skip
           </button>
         </div>
       </div>

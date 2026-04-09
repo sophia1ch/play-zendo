@@ -164,7 +164,7 @@
   border-radius: 0.625rem;
   border: 1px solid var(--border, #ddd);
   background: #d8d8d8;
-  overflow: hidden;
+  overflow: visible;
   max-height: 400px;
 }
 
@@ -308,4 +308,35 @@
   pointer-events: auto;
   background: rgba(108, 92, 231, 0.9);
   box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.35);
+}
+
+/* ─── Piece hover tooltip ──────────────────────────────────── */
+.piece-tooltip {
+  position: absolute;
+  background: rgba(20, 20, 30, 0.92);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 5px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.piece-tooltip-color {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+
+.piece-tooltip-rel {
+  font-size: 10px;
+  opacity: 0.85;
+  margin-top: 1px;
 }

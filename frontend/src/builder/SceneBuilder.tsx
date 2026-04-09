@@ -97,6 +97,12 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
   const dragOffset = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
   const downPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Palette-drag state: drag the preview piece into the scene
+  const [paletteDragPos, setPaletteDragPos] = useState<{ x: number; y: number } | null>(null);
+  const paletteDragActiveRef = useRef(false);
+
   // Arrow-drag state: drag from the mini-arrow button to a target piece
   const [arrowDragId, setArrowDragId] = useState<string | null>(null);
   const [arrowDragCursor, setArrowDragCursor] = useState<{
@@ -284,6 +290,66 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
     setActiveId(piece.id);
   }
 
+  function addPieceAt(x: number, y: number) {
+    if (scene.pieces.length >= MAX_PIECES) return;
+    const piece: Piece = {
+      id: crypto.randomUUID(),
+      shape: selShape,
+      color: selColor,
+      orientation: ensureOrientationForShape(selShape),
+      x,
+      y,
+      z: 0,
+      touchingLeft: null,
+      touchingRight: null,
+      onTop: null,
+      below: null,
+      pointing: null,
+    };
+    const newPieces = applyGravity(recomputeRelations([...scene.pieces, piece]));
+    setScene({ ...scene, pieces: newPieces });
+    actionLog.log("piece_added", { shape: selShape, color: selColor, orientation: piece.orientation, via: "drag" });
+    setActiveId(piece.id);
+  }
+
+  function onPreviewMouseDown(e: React.MouseEvent) {
+    if (scene.pieces.length >= MAX_PIECES) return;
+    e.preventDefault();
+    paletteDragActiveRef.current = true;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!paletteDragActiveRef.current) return;
+      const rect = sceneRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      if (ev.clientX >= rect.left && ev.clientX <= rect.right &&
+          ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
+        setPaletteDragPos({
+          x: Math.max(0, Math.min(canvasW - piecePx, Math.round(ev.clientX - rect.left - piecePx / 2))),
+          y: Math.max(0, Math.min(floorY, Math.round(ev.clientY - rect.top - piecePx / 2))),
+        });
+      } else {
+        setPaletteDragPos(null);
+      }
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      paletteDragActiveRef.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const rect = sceneRef.current?.getBoundingClientRect();
+      setPaletteDragPos(null);
+      if (!rect) return;
+      if (ev.clientX < rect.left || ev.clientX > rect.right ||
+          ev.clientY < rect.top || ev.clientY > rect.bottom) return;
+      const dropX = Math.max(0, Math.min(canvasW - piecePx, Math.round(ev.clientX - rect.left - piecePx / 2)));
+      const dropY = Math.max(0, Math.min(floorY, Math.round(ev.clientY - rect.top - piecePx / 2)));
+      addPieceAt(dropX, dropY);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   function cycleOrientation(id: string) {
     const target = scene.pieces.find((p) => p.id === id);
     const newPieces = scene.pieces.map((p) => {
@@ -380,6 +446,30 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
     return Math.max(min, Math.min(max, val));
   }
 
+  /** Returns true if `source` is allowed to point at `target`.
+   *  Rules:
+   *  1. Target must not be stacked on top of another piece (onTop !== null).
+   *  2. No other piece may occupy the horizontal gap between them at the same level.
+   */
+  function canPointTo(source: Piece, target: Piece, allPieces: Piece[]): boolean {
+    // Rule 1: cannot point at a piece that is itself stacked on another piece
+    if (target.onTop !== null) return false;
+
+    // Rule 2: no piece in between (same y level, overlapping the horizontal path)
+    const srcCX = source.x + piecePx / 2;
+    const tgtCX = target.x + piecePx / 2;
+    const minX = Math.min(srcCX, tgtCX);
+    const maxX = Math.max(srcCX, tgtCX);
+
+    return !allPieces.some((p) => {
+      if (p.id === source.id || p.id === target.id) return false;
+      if (p.onTop !== null) return false; // stacked pieces don't block line of sight
+      const overlapsH = p.x < maxX && p.x + piecePx > minX;
+      const overlapsV = Math.abs(p.y - source.y) < piecePx * 0.6;
+      return overlapsH && overlapsV;
+    });
+  }
+
   function onSceneMouseMove(e: React.MouseEvent) {
     if (arrowDragId) {
       const rect = sceneRef.current!.getBoundingClientRect();
@@ -387,13 +477,16 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
       const cy = e.clientY - rect.top;
       setArrowDragCursor({ x: cx, y: cy });
 
+      const source = scene.pieces.find((p) => p.id === arrowDragId);
+
       // Find the topmost piece (highest z) whose bounding box contains the cursor
+      // and that is a valid pointing target.
       let hover: string | null = null;
       let hoverZ = -Infinity;
       for (const p of scene.pieces) {
         if (p.id === arrowDragId) continue;
         if (cx >= p.x && cx <= p.x + piecePx && cy >= p.y && cy <= p.y + piecePx) {
-          if (p.z > hoverZ) {
+          if (p.z > hoverZ && source && canPointTo(source, p, scene.pieces)) {
             hoverZ = p.z;
             hover = p.id;
           }
@@ -463,13 +556,16 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
   function onSceneMouseUp(e: React.MouseEvent) {
     // Arrow-drag: lock in the hover target that was tracked during mousemove
     if (arrowDragId) {
-      const targetId = arrowDragHoverTarget;
+      const src = scene.pieces.find((p) => p.id === arrowDragId);
+      const rawTargetId = arrowDragHoverTarget;
+      const tgt = rawTargetId ? scene.pieces.find((p) => p.id === rawTargetId) : null;
+      // Final validity check in case state is slightly stale
+      const targetId = src && tgt && canPointTo(src, tgt, scene.pieces) ? rawTargetId : null;
       const newPieces = scene.pieces.map((p) =>
         p.id === arrowDragId ? { ...p, pointing: targetId ?? null } : p
       );
-      if (targetId) {
-        const src = scene.pieces.find((p) => p.id === arrowDragId);
-        if (src) actionLog.log("piece_pointing_set", { from: arrowDragId, to: targetId, shape: src.shape, orientation: src.orientation });
+      if (targetId && src) {
+        actionLog.log("piece_pointing_set", { from: arrowDragId, to: targetId, shape: src.shape, orientation: src.orientation });
       }
       setScene({ ...scene, pieces: recomputeRelations(newPieces) });
       setArrowDragId(null);
@@ -668,6 +764,8 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
         className={`piece-wrap ${p.id === activeId ? "active" : ""}${isArrowTarget ? " arrow-target" : ""}`}
         style={baseWrap}
         onMouseDown={(e) => onPieceMouseDown(e, p.id)}
+        onMouseEnter={() => setHoveredId(p.id)}
+        onMouseLeave={() => setHoveredId(null)}
       >
         {p.id === activeId && <div className="piece-outline" />}
         {isArrowTarget && <div className="arrow-target-outline" />}
@@ -849,11 +947,21 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
 
             <div className="sb-section">
               <span className="sb-label">Preview</span>
-              <div className="sb-preview-wrap">
+              <div
+                className="sb-preview-wrap"
+                onMouseDown={scene.pieces.length < MAX_PIECES ? onPreviewMouseDown : undefined}
+                style={{ cursor: scene.pieces.length < MAX_PIECES ? "grab" : undefined }}
+                title={scene.pieces.length < MAX_PIECES ? "Drag into scene to place" : undefined}
+              >
                 {previewSrc
-                  ? <img src={previewSrc} alt="preview" />
+                  ? <img src={previewSrc} alt="preview" draggable={false} />
                   : <span className="sb-placeholder">—</span>}
               </div>
+              {scene.pieces.length < MAX_PIECES && (
+                <span style={{ fontSize: 11, color: "#718096", marginTop: 2, display: "block", textAlign: "center" }}>
+                  drag into scene
+                </span>
+              )}
             </div>
           </div>
 
@@ -880,6 +988,57 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
           >
             <div className="sb-floor" style={{ top: floorY + piecePx, width: canvasW }} />
             {sorted.map((p) => renderPiece(p))}
+
+            {/* Hover tooltip — rendered at scene level so it's above all pieces and can overflow the scene edge */}
+            {(() => {
+              if (!hoveredId || dragId || arrowDragId) return null;
+              const p = scene.pieces.find((q) => q.id === hoveredId);
+              if (!p) return null;
+              const orientationLabel = p.orientation.replace("_", "-");
+              const relations: string[] = [];
+              if (p.touchingLeft !== null) {
+                const nb = scene.pieces.find((q) => q.id === p.touchingLeft);
+                relations.push(`touching left: ${nb ? `${nb.color} ${nb.shape}` : "piece"}`);
+              }
+              if (p.touchingRight !== null) {
+                const nb = scene.pieces.find((q) => q.id === p.touchingRight);
+                relations.push(`touching right: ${nb ? `${nb.color} ${nb.shape}` : "piece"}`);
+              }
+              if (p.onTop !== null) {
+                const nb = scene.pieces.find((q) => q.id === p.onTop);
+                relations.push(`on top of: ${nb ? `${nb.color} ${nb.shape}` : "piece"}`);
+              }
+              if (p.below !== null) {
+                const nb = scene.pieces.find((q) => q.id === p.below);
+                relations.push(`supporting: ${nb ? `${nb.color} ${nb.shape}` : "piece"}`);
+              }
+              if (p.pointing !== null) {
+                const nb = scene.pieces.find((q) => q.id === p.pointing);
+                relations.push(`pointing → ${nb ? `${nb.color} ${nb.shape}` : "piece"}`);
+              }
+              const flipBelow = p.y < piecePx * 1.5;
+              const tipStyle: React.CSSProperties = {
+                left: p.x + piecePx / 2,
+                transform: "translateX(-50%)",
+                ...(flipBelow
+                  ? { top: p.y + piecePx + 6 }
+                  : { top: p.y - 6, transform: "translate(-50%, -100%)" }),
+              };
+              return (
+                <div className="piece-tooltip" style={tipStyle}>
+                  <span className="piece-tooltip-color" style={{ background: COLOR_HEX[p.color] }} />
+                  <strong>{p.color} {p.shape}</strong>, {orientationLabel}
+                  {relations.map((r, i) => <div key={i} className="piece-tooltip-rel">{r}</div>)}
+                </div>
+              );
+            })()}
+
+            {/* Ghost preview while dragging from palette */}
+            {paletteDragPos && previewSrc && (
+              <div style={{ position: "absolute", left: paletteDragPos.x, top: paletteDragPos.y, width: piecePx, height: piecePx, opacity: 0.55, pointerEvents: "none", zIndex: 998 }}>
+                <img src={previewSrc} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "contain", transform: "scale(1.15)" }} />
+              </div>
+            )}
 
             {arrowDragSrc && arrowDragCursor && (
               <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 999 }}>

@@ -1,0 +1,73 @@
+.player-notes {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: clamp(100px, 8vh, 110px);
+  position: relative;
+}
+
+.notes-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notes-toggle {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.notes-toggle:hover {
+  opacity: 0.75;
+}
+
+.notes-chevron {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.notes-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #718096;
+  line-height: 1.4;
+}
+
+.notes-dropdown--hidden {
+  display: none;
+}
+
+/* Dropdown floats over content below — does not affect layout */
+.notes-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.notes-textarea {
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  min-height: 70px;
+  display: block;
+}
