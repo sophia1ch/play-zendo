@@ -862,9 +862,35 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
       );
       const SCALE = 1.15;
       const scaledPx = piecePx * SCALE;
-      const scaleOffset = (scaledPx - piecePx) / 2;
       for (const { p, img } of loaded) {
-        if (img) fullCtx.drawImage(img, p.x - scaleOffset, p.y - scaleOffset, scaledPx, scaledPx);
+        if (!img) continue;
+
+        const rotKey = `${p.shape}_${p.orientation}`;
+        const hasPointing = p.pointing != null;
+        const spriteRotDeg = hasPointing ? (POINTING_SPRITE_ROTATION[rotKey] ?? 0) : 0;
+
+        let shouldMirror = false;
+        if (hasPointing) {
+          const naturalDir = POINTING_NATURAL_DIR[rotKey];
+          if (naturalDir) {
+            const target = scene.pieces.find((q) => q.id === p.pointing);
+            if (target) {
+              const targetIsLeft = target.x < p.x;
+              shouldMirror =
+                (naturalDir === "right" && targetIsLeft) ||
+                (naturalDir === "left" && !targetIsLeft);
+            }
+          }
+        }
+
+        const cx = p.x + piecePx / 2;
+        const cy = p.y + piecePx / 2;
+        fullCtx.save();
+        fullCtx.translate(cx, cy);
+        if (shouldMirror) fullCtx.scale(-1, 1);
+        fullCtx.rotate((spriteRotDeg * Math.PI) / 180);
+        fullCtx.drawImage(img, -scaledPx / 2, -scaledPx / 2, scaledPx, scaledPx);
+        fullCtx.restore();
       }
 
       // Bounding box of pieces content (without floor)

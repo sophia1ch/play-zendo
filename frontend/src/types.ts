@@ -87,4 +87,5 @@ export type WSMessage =
       stones: number;
     }
   | { type: "game_system_message"; text: string }
-  | { type: "player_finished"; text: string };
+  | { type: "player_finished"; text: string }
+  | { type: "ping" };

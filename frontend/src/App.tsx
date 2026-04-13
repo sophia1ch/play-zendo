@@ -18,13 +18,22 @@ import * as actionLog from "./actionLog";
 // Set to true to skip the tutorial and go straight to the game after instructions.
 const SKIP_TUTORIAL = false;
 
-// Stable session ID — always a UUID so it's valid even before JATOS initialises.
-// The real JATOS workerId is recorded in the result metadata at submission time.
-const PARTICIPANT_ID = `s_${crypto.randomUUID().slice(0, 8)}`;
+// Stable participant ID persisted across sessions in localStorage.
+// Not written until the user consents (Instructions onContinue) on first visit.
+// The real JATOS workerId is also recorded in result metadata at submission time.
+const _storedId = localStorage.getItem("zendo_player_id");
+const PARTICIPANT_ID: string = _storedId ?? `s_${crypto.randomUUID().slice(0, 8)}`;
+const isReturningPlayer = !!_storedId;
+
+// True if the player has already seen and completed the tutorial.
+const tutorialAlreadyComplete = !!localStorage.getItem("zendo_tutorial_complete");
 
 export default function App() {
-  // High-level app phase: instructions → tutorial → game
-  const [appPhase, setAppPhase] = useState<"instructions" | "tutorial" | "game">("instructions");
+  // High-level app phase: instructions → tutorial → game.
+  // Returning players (tutorial already done) jump straight to game.
+  const [appPhase, setAppPhase] = useState<"instructions" | "tutorial" | "game">(
+    tutorialAlreadyComplete ? "game" : "instructions"
+  );
 
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [isStudyComplete, setIsStudyComplete] = useState(false);
@@ -128,6 +137,9 @@ export default function App() {
     console.log("[WS handleMessage]", msg);
 
     switch (msg.type) {
+      case "ping":
+        return;
+
       case "system": {
         console.log("[WS system]", msg.text);
         if ("sessionId" in msg && msg.sessionId) {
@@ -308,28 +320,13 @@ export default function App() {
 
     wsRef.current = ws;
 
-    // ws.addEventListener("open", () => {
-    //   // If instructions already seen, start immediately
-    //   if (localStorage.getItem("zendo_visited")) {
-    //     setShowInstructions(false);
-    //     // Use timeout to let React flush state before sending WS message
-    //     setTimeout(() => {
-    //       const id = crypto.randomUUID();
-    //       actionLog.startTask(id);
-    //       actionLog.log("game_started", { mode: "single", name: PARTICIPANT_ID });
-    //       setIsStudyComplete(false);
-    //       setLoadingInitial(true);
-    //       setPlayerIndex(0);
-    //       ws.send(JSON.stringify({
-    //         type: "start",
-    //         player: "",
-    //         mode: "single",
-    //         name: PARTICIPANT_ID,
-    //       }));
-    //       setWaitingForServer(true);
-    //     }, 0);
-    //   }
-    // });
+    // Returning players skip instructions and tutorial — start the game as soon as the
+    // WebSocket is open so they land directly in a new task.
+    if (tutorialAlreadyComplete) {
+      ws.addEventListener("open", () => {
+        setTimeout(() => startGame(), 0);
+      });
+    }
 
     ws.addEventListener("close", () => {
       console.warn("WebSocket closed");
@@ -433,6 +430,10 @@ export default function App() {
         <div className="main-content">
           <Instructions
             onContinue={() => {
+              // Persist the player ID now that the user has consented.
+              if (!isReturningPlayer) {
+                localStorage.setItem("zendo_player_id", PARTICIPANT_ID);
+              }
               localStorage.setItem("zendo_visited", "true");
               actionLog.setMetadata({
                 consented: true,
@@ -442,6 +443,7 @@ export default function App() {
                 jatoWorkerId: window.jatos?.workerId,
               });
               if (SKIP_TUTORIAL) {
+                localStorage.setItem("zendo_tutorial_complete", "true");
                 setAppPhase("game");
                 startGame();
               } else {
@@ -462,6 +464,7 @@ export default function App() {
           notes={playerNotes}
           onNotesChange={setPlayerNotes}
           onComplete={() => {
+            localStorage.setItem("zendo_tutorial_complete", "true");
             setAppPhase("game");
             startGame();
           }}

@@ -7,98 +7,90 @@ type Props = {
 
 const PAGES = [
   {
-    title: "Informed Consent",
+    title: "Information Sheet and Declaration on Data Protection",
     content: (
       <>
-        <p>
-          Please read this information carefully before proceeding. By continuing,
-          you confirm that you have read and understood this text and agree to
-          participate in the study.
-        </p>
-
         <div className="instr-section">
-          <h3 className="instr-section-title">Purpose of the study</h3>
+          <h3 className="Instr-section-title">Purpose and potential benefit of the experiment</h3>
           <p>
-            This study investigates how people learn visual rules in the game
-            Zendo. Your gameplay data will be used for academic research on human
-            inductive reasoning and concept learning. The project is conducted by
-            the research team at [“Darmstadt, TU Darmstadt”].
+            The purpose of this study is to examine how people learn and reason
+            about visual rules. The results have the potential to enhance our
+            understanding of human inductive reasoning and concept learning.
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">What participation involves</h3>
+          <h3 className="Instr-section-title">Procedure of the experiment</h3>
           <p>
-            You will play several rounds of Zendo, building scenes, guessing
-            labels, and formulating hypotheses about the hidden rule. Each
-            session takes about 20 minutes.
+            After a short briefing and a tutorial, you
+            will play a game on the computer.
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Data collected and use</h3>
-          <ul className="instr-list">
-            <li>
-              The scenes you build, your YES/NO label guesses, and your typed
-              rule guesses.
-            </li>
-            <li>
-              Timing information (e.g., how long you take per turn).
-            </li>
-            <li>
-              Non‑identifying technical information (e.g., browser, screen size)
-              used only for data quality control.
-            </li>
-            <li>
-              You may use the <strong>notes field</strong> during the game to
-              write down observations. <strong>Notes are not collected</strong>{" "}
-              and remain private to you.
-            </li>
-          </ul>
+          <h3 className="Instr-section-title" >Duration</h3>
           <p>
-            All data is linked only to a <strong>participant ID</strong> and not
-            to your name or other personal identifiers. Data will be stored
-            securely and used only for scientific analysis, teaching, and
-            publication.
-          </p>
-          <p>
-            Results will be reported in <strong>aggregated, anonymised form</strong>;
-            your individual data will not be published or shared with third parties.
+            Participation in the experiment is expected to take approximately
+            20 minutes. There is no monetary compensation for participation.
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Your rights and withdrawal</h3>
-          <ul className="instr-list">
-            <li>
-              Your participation is <strong>voluntary</strong>. You may stop at
-              any time without giving a reason and without any penalty.
-            </li>
-            <li>
-              If you stop part‑way, the data will not be kept.
-            </li>
-            <li>
-              You may ask for clarification or request deletion of your data
-              by contacting the research team at sophia.koehler@tu-darmstadt.de.
-            </li>
-          </ul>
-        </div>
-
-        <div className="instr-section">
-          <h3 className="instr-section-title">Privacy and data protection</h3>
+          <h3 className="Instr-section-title">Experiences / Risks associated with participation</h3>
           <p>
-            We comply with relevant data‑protection regulations (e.g., GDPR).
-            Data is stored on secure servers for 3 years, after which it will
-            be anonymised or deleted. Only authorised researchers will have
-            access to the raw data.
+            Participants in this study will not be exposed to any risk beyond
+            the risks of everyday life.
           </p>
         </div>
 
         <div className="instr-section">
-          <h3 className="instr-section-title">Contact</h3>
+          <h3 className="Instr-section-title">Privacy statement</h3>
+          <p>
+            No personal data is collected in this study. The following
+            information is recorded: your inputs when working on the tasks
+            (scenes you build, label guesses, and rule guesses) as well as
+            timing information. This data is linked only to an anonymous
+            participant ID generated at the start of the session, and cannot
+            be traced back to you as a person. The data will only be used for
+            the scientific purposes described here.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="Instr-section-title">Storage</h3>
+          <p>
+            The experimental data are stored on the JATOS server of TU Darmstadt
+            and on TU internal computers. The data is stored in a form that does
+            not allow any conclusions to be drawn about your person, i.e. the
+            data is anonymised. This anonymised data may also be published
+            scientifically.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="Instr-section-title">Voluntariness</h3>
+          <p>
+            Your participation in this study is voluntary. You are free at any
+            time to discontinue your participation without any disadvantages
+            arising for you. Data from incomplete sessions will not be used in
+            the analysis.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="Instr-section-title" >Agreement</h3>
+          <p>
+            By continuing, you agree to participate in this experiment and agree
+            that the data collected as part of the experiment will be evaluated
+            for scientific purposes and stored in anonymous form.
+          </p>
+        </div>
+
+        <div className="instr-section">
+          <h3 className="Instr-section-title">Contact</h3>
           <p className="instr-contact">
-            If you have questions about the study, data handling, or your rights,
-            you may contact: Sophia Koehler, TU Darmstadt, sophia.koehler@tu-darmstadt.de.
+            If you have any questions or suggestions, please contact:{" "}
+            <strong>Sophia Koehler</strong> (sophia.koehler@tu-darmstadt.de)
           </p>
         </div>
       </>
