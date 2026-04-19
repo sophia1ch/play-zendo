@@ -4,7 +4,7 @@ import "./TopStrip.css";
 type Props = {
   pos: string[];
   neg: string[];
-  onImageClick?: (url: string) => void;
+  onImageClick?: (type: "pos" | "neg", index: number) => void;
 };
 
 export default function TopStrip({ pos, neg, onImageClick }: Props) {
@@ -19,7 +19,7 @@ export default function TopStrip({ pos, neg, onImageClick }: Props) {
             </div>
           )}
           {pos.map((url, i) => (
-            <div key={i} className="thumb" onClick={() => onImageClick?.(url)}>
+            <div key={i} className="thumb" onClick={() => onImageClick?.("pos", i)}>
               <img src={url} alt={`yes-${i}`} />
             </div>
           ))}
@@ -38,7 +38,7 @@ export default function TopStrip({ pos, neg, onImageClick }: Props) {
             <div
               key={i}
               className="thumb bad"
-              onClick={() => onImageClick?.(url)}
+              onClick={() => onImageClick?.("neg", i)}
             >
               <img src={url} alt={`no-${i}`} />
             </div>

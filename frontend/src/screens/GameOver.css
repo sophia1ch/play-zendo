@@ -27,7 +27,13 @@
   color: #444;
 }
 
-.gameover-button {
+.gameover-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 8px;
+}
+
+.gameover-button {
   width: 100%;
 }

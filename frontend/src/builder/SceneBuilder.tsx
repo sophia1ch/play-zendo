@@ -928,10 +928,16 @@ const SceneBuilder = forwardRef<SceneBuilderHandle, Props>(function SceneBuilder
         ctx.fillRect(x, TARGET_FLOOR_Y, 8, 6);
       }
 
+      // Scale down if the crop is larger than the output canvas (happens on big screens
+      // where pieces are spread far apart); never upscale.
+      const scale = Math.min(1, OUT_W / cropW, TARGET_FLOOR_Y / cropH);
+      const scaledW = Math.round(cropW * scale);
+      const scaledH = Math.round(cropH * scale);
+
       // Paste pieces centered horizontally, floor-aligned vertically
-      const destX = Math.round((OUT_W - cropW) / 2);
-      const destY = TARGET_FLOOR_Y - (floorTop - cropY);
-      ctx.drawImage(full, cropX, cropY, cropW, cropH, destX, destY, cropW, cropH);
+      const destX = Math.round((OUT_W - scaledW) / 2);
+      const destY = TARGET_FLOOR_Y - scaledH;
+      ctx.drawImage(full, cropX, cropY, cropW, cropH, destX, destY, scaledW, scaledH);
 
       return canvas.toDataURL("image/png");
     },

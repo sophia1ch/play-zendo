@@ -140,10 +140,17 @@ body {
   z-index: 9999;
 }
 
+/* Outer flex row: [nav] [image box] [nav] */
+.img-lightbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .img-lightbox-content {
   position: relative;
-  max-width: min(90vw, 800px);
-  max-height: 90vh;
+  max-width: min(80vw, 700px);
+  max-height: 85vh;
   background: #000;
   border-radius: 10px;
   overflow: hidden;
@@ -155,7 +162,7 @@ body {
 
 .img-lightbox-content img {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 85vh;
   display: block;
 }
 
@@ -175,8 +182,37 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  z-index: 1;
 }
 
 .img-lightbox-close:hover {
   background: rgba(0, 0, 0, 0.9);
+}
+
+/* Circular arrow navigation buttons outside the image box */
+.img-lightbox-nav {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s ease;
+}
+
+.img-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.img-lightbox-nav.placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }

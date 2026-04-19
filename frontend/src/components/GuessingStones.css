@@ -1,7 +1,7 @@
 .stones {
   display: flex;
   flex-direction: column;
-  min-height: clamp(100px, 8vh, 110px);
+  min-height: clamp(60px, 8vh, 110px);
   flex: 1;
 }
 

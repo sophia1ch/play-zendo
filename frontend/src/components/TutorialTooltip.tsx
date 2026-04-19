@@ -1,8 +1,8 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import "../styles/TutorialTooltip.css";
 
 interface Props {
-  message: string;
+  message: ReactNode;
   targetSelector?: string;
   arrowDir?: "up" | "down" | "left" | "right";
   offset?: number;

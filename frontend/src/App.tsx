@@ -37,6 +37,7 @@ export default function App() {
 
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [isStudyComplete, setIsStudyComplete] = useState(false);
+  const [tasksExhausted, setTasksExhausted] = useState(false);
   // const [showInstructions, setShowInstructions] = useState(
   //   () => !localStorage.getItem("zendo_visited")
   // );
@@ -53,7 +54,10 @@ export default function App() {
   const [posImages, setPosImages] = useState<string[]>([]);
   const [negImages, setNegImages] = useState<string[]>([]);
 
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    type: "pos" | "neg";
+    index: number;
+  } | null>(null);
   const [previousRules, setPreviousRules] = useState<string[]>([]);
   const [playerNotes, setPlayerNotes] = useState("");
 
@@ -67,6 +71,10 @@ export default function App() {
   const [gameRule, setGameRule] = useState<string | null>(null);
   const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
   const [playerIndex, setPlayerIndex] = useState<number>(0);
+  const [counterExample, setCounterExample] = useState<{
+    image: string;
+    label: Label;
+  } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const backendSessionIdRef = useRef<string | null>(null);
@@ -77,6 +85,17 @@ export default function App() {
 
   const messageQueueRef = useRef<WSMessage[]>([]);
   const isProcessingRef = useRef(false);
+
+  const currentList = lightbox?.type === "pos" ? posImages : negImages;
+const currentIndex = lightbox?.index ?? 0;
+
+const currentImage =
+  lightbox && currentList ? currentList[currentIndex] : null;
+
+const hasPrev = lightbox ? currentIndex > 0 : false;
+const hasNext = lightbox
+  ? currentList && currentIndex < currentList.length - 1
+  : false;
 
   useEffect(() => {
     stepRef.current = step;
@@ -113,7 +132,7 @@ export default function App() {
     setOtherPlayersStones(null);
     setCurrentGuessImage(null);
     setPopupText(null);
-    setLightboxImage(null);
+    setLightbox(null);
     setGameWinner(null);
     setGameRule(null);
     setGameOverMessage(null);
@@ -155,6 +174,13 @@ export default function App() {
         if (url) {
           if (msg.label === "YES") setPosImages((prev) => [...prev, url]);
           else setNegImages((prev) => [...prev, url]);
+        }
+
+        if (url && msg.label && msg.isCounterExample) {
+          setCounterExample({
+            image: url,
+            label: msg.label,
+          });
         }
 
         if (stepRef.current === 0 && loadingInitialRef.current) {
@@ -209,8 +235,8 @@ export default function App() {
         setLoadingInitial(false);
         setWaitingForServer(false);
         setIsStudyComplete(true);
+        setTasksExhausted(msg.exhausted === true);
         // Submit results to JATOS now, in the background.
-        // The GameOver screen remains visible; the button calls endStudy when ready.
         actionLog.sendLog(wsRef.current);
         void actionLog.submitToJatos();
         return;
@@ -356,6 +382,7 @@ export default function App() {
 
     resetGameUiState();
     setIsStudyComplete(false);
+    setTasksExhausted(false);
     setLoadingInitial(true);
     setStep(0);
     setPlayerIndex(0);
@@ -407,18 +434,21 @@ export default function App() {
 
   function handleNextGame() {
     actionLog.log("next_game_clicked");
-    actionLog.downloadLog();
-
-    if (isStudyComplete) {
-      // Results were already submitted in the player_finished handler.
-      if (window.jatos) window.jatos.endStudy(true);
-      else setStep(0); // local dev: just return to start
-      return;
-    }
-
     actionLog.sendLog(wsRef.current);
     resetGameUiState();
     startGame();
+  }
+
+  function handleExitStudy() {
+    actionLog.log("exit_study_clicked");
+    actionLog.downloadLog();
+    // Results were already submitted in the player_finished handler.
+    if (window.jatos) window.jatos.endStudy(true);
+    else {
+      // Local dev: show the "all done" screen.
+      setTasksExhausted(true);
+      setStep(0);
+    }
   }
 
   const youWon = gameWinner === playerIndexRef.current;
@@ -481,7 +511,7 @@ export default function App() {
           <TopStrip
             pos={posImages}
             neg={negImages}
-            onImageClick={(url) => setLightboxImage(url)}
+            onImageClick={(type, index) => setLightbox({ type, index })}
           />
           <div className="row">
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -506,12 +536,39 @@ export default function App() {
         </div>
       )}
 
+      {counterExample && (
+        <div className="popup-overlay">
+          <div className="popup-card">
+            <button
+              className="popup-close"
+              onClick={() => setCounterExample(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+            <h3>Counterexample</h3>
+
+            <img
+              src={counterExample.image}
+              alt="counterexample"
+              style={{ maxWidth: "100%", borderRadius: 8 }}
+            />
+
+            <p style={{ marginTop: 8 }}>
+              Label: <strong>{counterExample.label}</strong>
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="main-content">
-        {step === 0 && isStudyComplete && (
+        {step === 0 && isStudyComplete && tasksExhausted && (
           <div className="start-screen-wrapper">
             <div className="start-screen-inner start-screen container col">
-              <h1 className="text-2xl font-semibold">All done!</h1>
-              <p>You have completed all tasks. Thank you for participating!</p>
+              <h1 className="text-2xl font-semibold">Thank you!</h1>
+              <p>You have completed all available tasks. Thank you for participating!</p>
+              <button className="btn primary" onClick={handleExitStudy}>Exit</button>
             </div>
           </div>
         )}
@@ -547,30 +604,63 @@ export default function App() {
             youWon={youWon}
             rule={gameRule}
             message={gameOverMessage}
+            tasksExhausted={tasksExhausted}
             nextGame={handleNextGame}
+            onExit={handleExitStudy}
           />
         )}
 
         {waitingForServer && <Loading />}
       </div>
 
-      {lightboxImage && (
-        <div
-          className="img-lightbox-overlay"
-          onClick={() => setLightboxImage(null)}
-        >
+      {lightbox && currentImage && (
+        <div className="img-lightbox-overlay" onClick={() => setLightbox(null)}>
           <div
-            className="img-lightbox-content"
+            className="img-lightbox-wrapper"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              className="img-lightbox-close"
-              onClick={() => setLightboxImage(null)}
-              aria-label="Close image"
-            >
-              ×
-            </button>
-            <img src={lightboxImage} alt="enlarged example" />
+            {hasPrev ? (
+              <button
+                className="img-lightbox-nav"
+                onClick={() =>
+                  setLightbox((prev) =>
+                    prev ? { ...prev, index: prev.index - 1 } : prev
+                  )
+                }
+                aria-label="Previous image"
+              >
+                ‹
+              </button>
+            ) : (
+              <div className="img-lightbox-nav placeholder" />
+            )}
+
+            <div className="img-lightbox-content">
+              <button
+                className="img-lightbox-close"
+                onClick={() => setLightbox(null)}
+                aria-label="Close image"
+              >
+                ×
+              </button>
+              <img src={currentImage} alt="enlarged example" />
+            </div>
+
+            {hasNext ? (
+              <button
+                className="img-lightbox-nav"
+                onClick={() =>
+                  setLightbox((prev) =>
+                    prev ? { ...prev, index: prev.index + 1 } : prev
+                  )
+                }
+                aria-label="Next image"
+              >
+                ›
+              </button>
+            ) : (
+              <div className="img-lightbox-nav placeholder" />
+            )}
           </div>
         </div>
       )}

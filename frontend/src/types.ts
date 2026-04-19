@@ -49,6 +49,7 @@ export type WSMessage =
       label: Label;
       imageDataUrl?: string | null;
       description?: string | null;
+      isCounterExample?: boolean;
     }
   | { type: "guess"; guess: string; correct: boolean; stones: number }
   | {
@@ -87,5 +88,5 @@ export type WSMessage =
       stones: number;
     }
   | { type: "game_system_message"; text: string }
-  | { type: "player_finished"; text: string }
+  | { type: "player_finished"; text: string; exhausted?: boolean }
   | { type: "ping" };

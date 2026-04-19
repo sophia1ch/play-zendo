@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import BuildSceneScreen from "./BuildSceneScreen";
 import GuessLabelScreen from "./GuessLabelScreen";
 import TopStrip from "../components/TopStrip";
@@ -47,7 +47,7 @@ const PHASES: Phase[] = [
 ];
 
 interface TooltipConfig {
-  message: string;
+  message: ReactNode;
   targetSelector?: string;
   arrowDir?: "up" | "down" | "left" | "right";
 }
@@ -66,8 +66,12 @@ const TOOLTIPS: Record<Phase, TooltipConfig | null> = {
     arrowDir: "down",
   },
   drag_adjacent: {
-    message:
-      "Drag one of the upright pieces close to the other upright piece — they will snap together when near enough.",
+    message: (
+      <>
+        Drag one of the <strong>upright</strong> pieces close to the other{" "}
+        <strong>upright</strong> piece — they will snap together when near enough.
+      </>
+    ),
     targetSelector: ".piece-wrap",
     arrowDir: "down",
   },
@@ -198,8 +202,9 @@ export default function TutorialScreen({ onComplete, notes, onNotesChange }: Pro
     }
   }
 
-  function handleImageClick(url: string) {
-    setLightboxImage(url);
+  function handleImageClick(type: "pos" | "neg", index: number) {
+    const url = (type === "pos" ? posImages : negImages)[index];
+    if (url) setLightboxImage(url);
     setExampleViewed(true);
   }
 

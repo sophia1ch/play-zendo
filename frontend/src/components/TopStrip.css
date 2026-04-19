@@ -1,30 +1,42 @@
-/* Wrapper row (just to be sure it doesn't grow wider than the viewport) */
+/* Wrapper row */
 .topstrips {
   display: flex;
   gap: 12px;
   width: 100%;
+  height: clamp(120px, 25vh, 360px);
+  flex-shrink: 1;
 }
 
-/* Each strip takes half the row, regardless of how many images it has */
 .topstrips .strip {
-  flex: 1 1 0;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  width: 50%;
   padding: 8px;
-  font-size: 11px;
 }
 
-/* Container for the thumbnails – horizontal scrollable within fixed strip */
+.topstrips .section-title {
+  font-size: inherit;
+  flex-shrink: 0;
+}
+
+/* Thumbnail row – fills whatever height the strip has after the title */
 .thumbs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 100px);
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  max-width: 100%; /* stay inside strip */
+  justify-content: start;   /* 👈 keep items left-aligned */
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Optional: Scrollbar styling (WebKit) */
 .thumbs::-webkit-scrollbar {
-  height: 6px;
+  width: 6px;
 }
 .thumbs::-webkit-scrollbar-track {
   background: transparent;
@@ -39,15 +51,16 @@
   cursor: pointer;
 }
 
-/* Single thumbnail */
+/* Single thumbnail – width scales with vh, height fills the row */
 .thumb {
-  flex: 0 0 auto; /* fixed-size items, scroll horizontally */
-  width: clamp(70px, 8vw, 120px);
-  height: clamp(40px, 4vw, 70px);
+  width: 100%;
+  height: 100px;          /* 👈 fixed size = stable layout */
+
   background: #ddd;
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,7 +72,7 @@
 }
 
 .thumb.placeholder span {
-  font-size: 18px;
+  font-size: clamp(16px, 2.5vh, 28px);
   color: #888;
 }
 
@@ -69,4 +82,16 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+@media (max-height: 750px) {
+  .tutorial-screen .topstrips {
+    height: clamp(70px, 14vh, 160px);
+  }
+  .tutorial-screen .thumb {
+    height: 70px;
+  }
+  .tutorial-screen .thumbs {
+    grid-template-columns: repeat(auto-fill, 70px);
+  }
 }

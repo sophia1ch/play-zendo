@@ -5,14 +5,18 @@ type GameOverProps = {
   youWon: boolean;
   rule: string | null;
   message: string | null;
+  tasksExhausted: boolean;
   nextGame: () => void;
+  onExit: () => void;
 };
 
 export default function GameOver({
   youWon,
   rule,
   message,
+  tasksExhausted,
   nextGame,
+  onExit,
 }: GameOverProps) {
   return (
     <div className="gameover-wrapper">
@@ -29,9 +33,40 @@ export default function GameOver({
 
         {!rule && message && <p className="gameover-text">{message}</p>}
 
-        <button className="btn primary gameover-button" onClick={() => { actionLog.log("game_over_next_clicked", { youWon, rule }); nextGame(); }}>
-          Finish session
-        </button>
+        <p className="gameover-text">Thank you for playing!</p>
+
+        {tasksExhausted ? (
+          <p className="gameover-text">
+            You have completed all available tasks.
+          </p>
+        ) : (
+          <p className="gameover-text">
+            You are welcome to play another round if you'd like.
+          </p>
+        )}
+
+        <div className="gameover-buttons">
+          {!tasksExhausted && (
+            <button
+              className="btn primary gameover-button"
+              onClick={() => {
+                actionLog.log("game_over_next_clicked", { youWon, rule });
+                nextGame();
+              }}
+            >
+              Next game
+            </button>
+          )}
+          <button
+            className="btn gameover-button"
+            onClick={() => {
+              actionLog.log("game_over_exit_clicked", { youWon, rule });
+              onExit();
+            }}
+          >
+            Exit
+          </button>
+        </div>
       </div>
     </div>
   );

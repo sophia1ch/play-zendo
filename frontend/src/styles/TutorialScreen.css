@@ -131,6 +131,17 @@
   margin: 0 0 24px;
 }
 
+/* ── Compact layout for short screens ─────────────────────────────────── */
+@media (max-height: 750px) {
+  .tutorial-screen {
+    gap: 4px;
+  }
+  .tutorial-banner {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+}
+
 /* ── Guess rule phase ─────────────────────────────────────────────────── */
 .tutorial-rule-hint {
   background: #e8f0fe;
